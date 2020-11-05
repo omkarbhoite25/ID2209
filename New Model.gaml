@@ -11,12 +11,12 @@ species FestivalGuest skills:[moving]{
 	rgb myColor <- #green;
 	int thirst <- rnd(0,50) update: thirst + rnd(0,4) max: 200 min: 0;
 	int hunger <- rnd(0,80) update: hunger + rnd(0,2) max: 200 min: 0;
-	string fruits <- "banana" among: ["pear","apple","banana"];
 	list<point> knownFoodPlaces <- [];
 	list<point> knownJuicePlaces <- [];
+	bool isBadApple <- false;
+	point badAppleLocation <- nil;
 		
 	bool isHungry{
-		//return false;
 		return hunger > 199;
 	}
 	
@@ -24,13 +24,34 @@ species FestivalGuest skills:[moving]{
 		return thirst > 199;
 	}
 	
+	list<FestivalGuest> nearbyBadApples {
+		return FestivalGuest where(each.isBadApple and each.location distance_to location <5);
+	}
+	
+	bool isNearBadApple{
+		 return !empty(nearbyBadApples);
+	}
+	
 	aspect default{
 		draw pyramid(2) at: location color: myColor;
 		draw sphere(1) at: location + {0,0,1} color: myColor;
 	}
 	
-	reflex beIdle when: targetPoint = nil{
+	reflex reportBadApple when: isNearBadApple(){
+		list<FestivalGuest> badApples <- nearbyBadApples();
+		ask one_of(badApples){
+		 		myself.badAppleLocation <- location;
+		}
+		do headTowardsInformationCenter;
+	}
+	
+	reflex beIdle when: !isBadApple and targetPoint = nil{
 		do wander;
+	}
+	
+	reflex becomeBadApple when: thirst = 0 and flip(0.01){
+		isBadApple <- true;
+		myColor <- #black;
 	}
 	
 	action setSailForThisJuiceStand(point newJuicePlace){
@@ -50,7 +71,7 @@ species FestivalGuest skills:[moving]{
 	}
 	
 	//Using targetPoint = infoCenter to determine location
-	reflex askForDirections when: targetPoint = {50,50} {
+	reflex askForDirections when: targetPoint = {50,50} and !isBadApple{
 		list<FestivalGuest> guests <- FestivalGuest where(each.location distance_to location <5);
 		if(!empty(guests)){
 			list<FestivalGuest> juiceKnowers <- guests where(!empty(each.knownJuicePlaces) and !(knownJuicePlaces contains_all each.knownJuicePlaces));
@@ -76,7 +97,7 @@ species FestivalGuest skills:[moving]{
 	}
 	
 	//Enter store when hunger/thirst is below threshold, and close to store
-	reflex reactToAgent when: targetPoint != nil and location distance_to(targetPoint) <2 {
+	reflex pickUpFoodOrAskForDirectiosn when: !isBadApple and targetPoint != nil and location distance_to(targetPoint) <5{
 		if targetPoint = {50,50}{
 			point juice <- nil;
 			point food <- nil;
@@ -111,7 +132,7 @@ species FestivalGuest skills:[moving]{
 	
 	//75 chance to go to known location, 25% chance to go to info center for a new location
 	//If they don't know about any place, they will head to the info center.
-	reflex handleNeeds when: targetPoint = nil and ( isHungry() or isThirsty()) {
+	reflex handleNeeds when: !isBadApple and targetPoint = nil and ( isHungry() or isThirsty()) {
 		//Curiostiy + do I know of all the locations?
 		bool isSeekingNewFood <- flip(0.25) and length (Shop where(each.isFoodShop)) > length(knownFoodPlaces);
 		bool isSeekingNewJuice <- flip(0.25) and length (Shop where(!each.isFoodShop)) > length(knownJuicePlaces);
@@ -148,9 +169,28 @@ species SecurityGuard skills:[moving]{
 		do wander;
 	}
 	
-	//reflex enterStore when: location distance_to(targetPoint) <2 {
-		//Do something here.
-	//}
+	list<FestivalGuest> nearbyBadApples {
+		return FestivalGuest where(each.isBadApple and each.location distance_to location <5);
+	}
+	
+	bool isNearBadApple{
+		 return !empty(nearbyBadApples);
+	}
+	
+	reflex killBadApple when: isNearBadApple(){
+		list<FestivalGuest> badApples <- nearbyBadApples();
+		ask one_of(badApples){
+		 		do die;
+		}
+	}
+	
+	reflex goBackToIdle when: targetPoint != nil and location = targetPoint {
+		targetPoint <- nil;
+	}
+	
+	action goToBadApple(point badAppleLocation) {
+		targetPoint <- badAppleLocation;
+	}
 	
 	reflex moveToTarget when: targetPoint != nil{
 		do goto target:targetPoint;
@@ -189,7 +229,7 @@ species InformationCenter {
 
 global {
 	init {
-		create FestivalGuest number: 20;
+		create FestivalGuest number: 100;
 		create Shop number: 5;
 		create InformationCenter number: 1;
 		create SecurityGuard number:5;
