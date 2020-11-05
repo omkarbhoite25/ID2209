@@ -9,7 +9,7 @@ model NewModel
 species FestivalGuest skills:[moving]{
 	point targetPoint <- nil;
 	rgb myColor <- #green;
-	int thirst <- rnd(0,50) update: thirst + rnd(0,4) max: 200 min: 0;
+	int thirst <- rnd(0,50) update: thirst + rnd(0,4) max: 300 min: 0;
 	int hunger <- rnd(0,80) update: hunger + rnd(0,2) max: 200 min: 0;
 	list<point> knownFoodPlaces <- [];
 	list<point> knownJuicePlaces <- [];
@@ -29,7 +29,7 @@ species FestivalGuest skills:[moving]{
 	}
 	
 	bool isNearBadApple{
-		 return !empty(nearbyBadApples);
+		 return !empty(nearbyBadApples());
 	}
 	
 	aspect default{
@@ -37,20 +37,23 @@ species FestivalGuest skills:[moving]{
 		draw sphere(1) at: location + {0,0,1} color: myColor;
 	}
 	
-	reflex reportBadApple when: isNearBadApple(){
+	reflex reportBadApple when: !isBadApple and badAppleLocation = nil  and isNearBadApple(){
 		list<FestivalGuest> badApples <- nearbyBadApples();
 		ask one_of(badApples){
-		 		myself.badAppleLocation <- location;
+		 	myself.badAppleLocation <- location;
 		}
 		do headTowardsInformationCenter;
+		myColor <- #white;
 	}
 	
 	reflex beIdle when: !isBadApple and targetPoint = nil{
 		do wander;
 	}
 	
-	reflex becomeBadApple when: thirst = 0 and flip(0.01){
+	reflex becomeBadApple when: thirst = 299 and flip(0.25){
+		write "I am a bad apple!";
 		isBadApple <- true;
+		targetPoint <- nil;
 		myColor <- #black;
 	}
 	
@@ -82,7 +85,6 @@ species FestivalGuest skills:[moving]{
 					list<point> newJuicePlaces <- knownJuicePlaces where(!(myself.knownJuicePlaces contains(each)));
 					juice <- one_of(newJuicePlaces);
 				}
-				write "Neighbor told me to goto" + juice;
 				do setSailForThisJuiceStand(juice);
 			} else if isHungry() and !empty(foodKnowers){
 				point food <- nil;
@@ -90,7 +92,6 @@ species FestivalGuest skills:[moving]{
 					list<point> newFoodPlaces <- knownFoodPlaces where(!(myself.knownFoodPlaces contains(each)));
 					food <- one_of(newFoodPlaces);
 				}
-				write "Neighbor told me to goto" + food;
 				do setSailForThisFoodStand(food);
 			}
 		}
@@ -98,7 +99,27 @@ species FestivalGuest skills:[moving]{
 	
 	//Enter store when hunger/thirst is below threshold, and close to store
 	reflex pickUpFoodOrAskForDirectiosn when: !isBadApple and targetPoint != nil and location distance_to(targetPoint) <5{
-		if targetPoint = {50,50}{
+		if badAppleLocation != nil {
+			if targetPoint = {50,50}{
+				ask one_of(InformationCenter) {
+					myself.targetPoint <- getCopLocation();					
+				}
+			} else if targetPoint = badAppleLocation{
+				//have arrived with cop to badAppleLocation
+				targetPoint <- nil;
+				badAppleLocation <- nil;
+			} else if (SecurityGuard closest_to location).location distance_to location < 5{
+				//arrived close to cop
+				targetPoint <- badAppleLocation;
+				ask (SecurityGuard closest_to location){
+					do goToBadApple(myself.badAppleLocation);
+				}				
+			} else {
+				//Lost track of cop..... Give up on reporting
+				targetPoint <- nil;
+				badAppleLocation <- nil;
+			}
+		} else if targetPoint = {50,50}{
 			point juice <- nil;
 			point food <- nil;
 			if isThirsty() and isHungry() {
@@ -149,7 +170,6 @@ species FestivalGuest skills:[moving]{
 	action headTowardsInformationCenter{
 		myColor <- #red; // Have need & is questing for new information.
 		targetPoint <- {50,50}; 
-		// Going to InformationCenter
 	}
 	
 	reflex moveToTarget when: targetPoint != nil{
@@ -165,22 +185,18 @@ species SecurityGuard skills:[moving]{
 		draw hexagon(2) at: location color: #blue;
 	}
 	
-	reflex beIdle when: targetPoint = nil{
-		do wander;
-	}
-	
 	list<FestivalGuest> nearbyBadApples {
 		return FestivalGuest where(each.isBadApple and each.location distance_to location <5);
 	}
 	
 	bool isNearBadApple{
-		 return !empty(nearbyBadApples);
+		 return !empty(nearbyBadApples());
 	}
 	
 	reflex killBadApple when: isNearBadApple(){
 		list<FestivalGuest> badApples <- nearbyBadApples();
 		ask one_of(badApples){
-		 		do die;
+		 	do die;
 		}
 	}
 	
@@ -211,8 +227,7 @@ species Shop {
 
 species InformationCenter {
 	init {
-     location <- {50,50};
-     //list<Shop> all_shops <- prey inside (my_cell);
+      location <- {50,50};
     }
 	aspect default{
 		draw square(10) at: location color: #orange;
@@ -225,6 +240,10 @@ species InformationCenter {
 	point getAJuiceShop{
 		return one_of(Shop where (!each.isFoodShop)).location;
 	} 
+	
+	point getCopLocation{
+		return one_of(SecurityGuard).location;
+	}
 }
 
 global {
@@ -232,7 +251,7 @@ global {
 		create FestivalGuest number: 100;
 		create Shop number: 5;
 		create InformationCenter number: 1;
-		create SecurityGuard number:5;
+		create SecurityGuard number:1;
 	}
 	/** Insert the global definitions, variables and actions here */
 }
