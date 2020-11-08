@@ -1,7 +1,7 @@
 /**
 * Name: NewModel
 * Based on the internal skeleton template. 
-* Author: fil
+* Author: Filip de Figueiredo (Personal Number 19930708-3973)  & Omkar Bhoite (Student ID:07579162)
 * Tags: 
 */
 
@@ -54,7 +54,7 @@ species FestivalGuest skills:[moving]{
 	
 	reflex beIdle when: !isBadApple and targetPoint = nil{
 		do wander;
-		//distance <- distance + speed; //distance moved while wandering.
+		distance <- distance + speed; //distance moved while wandering.
 	}
 	
 	reflex becomeBadApple when: copScenario and thirst = 299 and flip(0.25){
@@ -155,10 +155,10 @@ species FestivalGuest skills:[moving]{
 		} else {
 			ask Shop closest_to targetPoint{
 				if isFoodShop{
-					write myself.name + " took care of their hunger!";
+					write name + " took care of their hunger!";
 					myself.hunger<-0;
 				} else {
-					write myself.name + " took care of their thirst!";
+					write name + " took care of their thirst!";
 					myself.thirst<-0;
 				}
 			} 
@@ -197,7 +197,6 @@ species FestivalGuest skills:[moving]{
 	
 	reflex moveToTarget when: targetPoint != nil{
 		do goto target:targetPoint;
-		distance <- distance + speed; //distance moved while wandering.
 	}	
 
 }
@@ -207,12 +206,7 @@ species SecurityGuard skills:[moving]{
 	
 	aspect default{
 		draw hexagon(2) at: location color: #blue;
-		draw hexagon(2) at: location+{0,0,0.5} color: #blue;
-		draw hexagon(2) at: location+{0,0,1} color: #blue;
-		draw hexagon(2) at: location+{0,0,1.5} color: #blue;
-		draw hexagon(2) at: location+{0,0,2} color: #blue;
-		draw hexagon(2) at: location+{0,0,2.5} color: #blue;
-			
+		
 	}
 	
 	list<FestivalGuest> nearbyBadApples {
@@ -250,9 +244,9 @@ species Shop {
 	bool isFoodShop <- flip(0.5);
 	aspect default{
 		if(isFoodShop){
-			draw circle(3) at: location color: #hotpink;	
+			draw pyramid(5) at: location color: #hotpink;	
 		} else {
-			draw circle(3) at: location color: #aqua;
+			draw pyramid(5) at: location color: #aqua;
 		}
 		
 	}
@@ -263,7 +257,8 @@ species InformationCenter {
       location <- {50,50};
     }
 	aspect default{
-		draw square(10) at: location color: #orange;
+		draw cube(5) at: location color: #orange;
+		draw pyramid(5) at: location + {0,0,5} color: #orange;
 	}
 	
 	point getANewFoodShop(point origin, list<point> oldLocations){
@@ -285,23 +280,14 @@ species InformationCenter {
 	point getCopLocation{
 		return one_of(SecurityGuard).location;
 	}
-	
-	int getTotalDistance{
-		int sum <- 0;
-		loop i over: FestivalGuest {
-			write i.name;
-		}
-		return 100;
-	}
 }
 
 global {
 	//Turns cop scenario on/off
-	bool copScenario <- false;
+	bool copScenario <- true;
 	
 	//Turns memory challenge on/off
-	bool memoryScenario <- false;
-
+	bool memoryScenario <- true;
 	init {
 		create FestivalGuest number: 100;
 		create Shop number: 2 with: (isFoodShop: true);
@@ -313,12 +299,11 @@ global {
 			create SecurityGuard number:3;
 		}
 	}
-	
-	
 	/** Insert the global definitions, variables and actions here */
 }
 
 experiment NewModel type: gui {
+	/** Insert here the definition of the input and output of the model */
 	output {
 		display map type: opengl {
 			species FestivalGuest aspect: default; 
