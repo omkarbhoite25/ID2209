@@ -44,6 +44,7 @@ species FestivalGuest skills:[moving]{
 		 	myself.badAppleLocation <- location;
 		}
 		do headTowardsInformationCenter;
+		write name+" is reporting a bad apple";
 		myColor <- #white;
 	}
 	
@@ -85,13 +86,16 @@ species FestivalGuest skills:[moving]{
 				point juice <- nil;
 				ask one_of(juiceKnowers){
 					list<point> newJuicePlaces <- knownJuicePlaces where(!(myself.knownJuicePlaces contains(each)));
+					write name + " gave " + myself.name + " the location of a new juice shop!";
 					juice <- one_of(newJuicePlaces);
 				}
+				
 				do setSailForThisJuiceStand(juice);
 			} else if isHungry() and !empty(foodKnowers){
 				point food <- nil;
 				ask one_of(foodKnowers){
 					list<point> newFoodPlaces <- knownFoodPlaces where(!(myself.knownFoodPlaces contains(each)));
+					write name + " gave " + myself.name + " the location of a new food shop!";
 					food <- one_of(newFoodPlaces);
 				}
 				do setSailForThisFoodStand(food);
@@ -106,20 +110,24 @@ species FestivalGuest skills:[moving]{
 				ask one_of(InformationCenter) {
 					myself.targetPoint <- getCopLocation();					
 				}
+				write name + " is heading towards a cop's last known location";
 			} else if targetPoint = badAppleLocation{
 				//have arrived with cop to badAppleLocation
 				targetPoint <- nil;
 				badAppleLocation <- nil;
+				write name + " is done doing their civic duty";
 			} else if (SecurityGuard closest_to location).location distance_to location < 5{
 				//arrived close to cop
 				targetPoint <- badAppleLocation;
 				ask (SecurityGuard closest_to location){
 					do goToBadApple(myself.badAppleLocation);
-				}				
+				}
+				write name + " is reporting bad behaviour to a cop" ;				
 			} else {
 				//Lost track of cop..... Give up on reporting
 				targetPoint <- nil;
 				badAppleLocation <- nil;
+				write name + " could not find a cop at their last known location, and is giving up on their civic duty";
 			}
 		} else if targetPoint = {50,50}{
 			point juice <- nil;
@@ -143,8 +151,10 @@ species FestivalGuest skills:[moving]{
 		} else {
 			ask Shop closest_to targetPoint{
 				if isFoodShop{
+					write name + " took care of their hunger!";
 					myself.hunger<-0;
 				} else {
+					write name + " took care of their thirst!";
 					myself.thirst<-0;
 				}
 			} 
@@ -160,11 +170,18 @@ species FestivalGuest skills:[moving]{
 		bool isSeekingNewFood <- flip(0.25) and length (Shop where(each.isFoodShop)) > length(knownFoodPlaces);
 		bool isSeekingNewJuice <- flip(0.25) and length (Shop where(!each.isFoodShop)) > length(knownJuicePlaces);
 		if isThirsty() and !empty(knownJuicePlaces) and !isSeekingNewJuice{
+			write name + "is thirsty, and is heading for a juice place they know";
 			do setSailForThisJuiceStand(one_of(knownJuicePlaces));
 		} else if isHungry() and !empty(knownFoodPlaces) and !isSeekingNewFood{
 			do setSailForThisFoodStand(one_of(knownFoodPlaces));
+			write name + "is hungry, and is heading for a food place they know";
 		} else {
 			//Discover new place.
+			if memoryScenario{
+				write name + " is hungry/thirsty but wants to go to a new place";
+			} else {
+				write name + " is hungry/thirsty and is heading to the information center to find the nearest shop.";
+			}
 			do headTowardsInformationCenter;	
 		}
 	}
@@ -198,6 +215,7 @@ species SecurityGuard skills:[moving]{
 	reflex killBadApple when: isNearBadApple(){
 		list<FestivalGuest> badApples <- nearbyBadApples();
 		ask one_of(badApples){
+			write myself.name + " is taking care of bad apple " + name;
 		 	do die;
 		}
 	}
@@ -207,6 +225,7 @@ species SecurityGuard skills:[moving]{
 	}
 	
 	action goToBadApple(point badAppleLocation) {
+		write name + " is heading towards a bad apple";
 		targetPoint <- badAppleLocation;
 	}
 	
