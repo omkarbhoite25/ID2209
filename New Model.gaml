@@ -36,6 +36,10 @@ species FestivalGuest skills:[moving]{
 	aspect default{
 		draw pyramid(2) at: location color: myColor;
 		draw sphere(1) at: location + {0,0,1} color: myColor;
+		//If this guest knows of all the food & juice places, give them a teapot hat.
+		if (length (Shop where(each.isFoodShop)) = length(knownFoodPlaces)) and length (Shop where(!each.isFoodShop)) = length(knownJuicePlaces) {
+			draw teapot(1/2) at:location + {0,0,3.5} color: #yellow;	
+		}
 	}
 	
 	reflex reportBadApple when: !isBadApple and badAppleLocation = nil  and isNearBadApple(){
@@ -235,6 +239,7 @@ species SecurityGuard skills:[moving]{
 }
 
 species Shop {
+	//Randomly decides on being a food or drinks place.
 	bool isFoodShop <- flip(0.5);
 	aspect default{
 		if(isFoodShop){
@@ -277,10 +282,10 @@ species InformationCenter {
 
 global {
 	//Turns cop scenario on/off
-	bool copScenario <- false;
+	bool copScenario <- true;
 	
 	//Turns memory challenge on/off
-	bool memoryScenario <- false;
+	bool memoryScenario <- true;
 	init {
 		create FestivalGuest number: 100;
 		create Shop number: 2 with: (isFoodShop: true);
