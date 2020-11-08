@@ -15,7 +15,7 @@ species FestivalGuest skills:[moving]{
 	list<point> knownJuicePlaces <- [];
 	bool isBadApple <- false;
 	point badAppleLocation <- nil;
-	float distance <-0;
+	float distance <-0.0;
 		
 	bool isHungry{
 		return hunger > 199;
@@ -257,7 +257,10 @@ species InformationCenter {
 }
 
 global {
+	//Turns cop scenario on/off
 	bool copScenario <- false;
+	
+	//Turns memory challenge on/off
 	bool memoryScenario <- false;
 	init {
 		create FestivalGuest number: 100;
