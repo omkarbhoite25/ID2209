@@ -15,6 +15,7 @@ species FestivalGuest skills:[moving]{
 	list<point> knownJuicePlaces <- [];
 	bool isBadApple <- false;
 	point badAppleLocation <- nil;
+	float distance <-0;
 		
 	bool isHungry{
 		return hunger > 199;
@@ -25,7 +26,7 @@ species FestivalGuest skills:[moving]{
 	}
 	
 	list<FestivalGuest> nearbyBadApples {
-		return FestivalGuest where(each.isBadApple and each.location distance_to location <5);
+		return FestivalGuest where(each.isBadApple and each.location distance_to location <3);
 	}
 	
 	bool isNearBadApple{
@@ -48,17 +49,18 @@ species FestivalGuest skills:[moving]{
 	
 	reflex beIdle when: !isBadApple and targetPoint = nil{
 		do wander;
+		distance <- distance + speed; //distance moved while wandering.
 	}
 	
-	reflex becomeBadApple when: thirst = 299 and flip(0.25){
-		write "I am a bad apple!";
+	reflex becomeBadApple when: copScenario and thirst = 299 and flip(0.25){
+		write name+" has become a bad apple!";
 		isBadApple <- true;
 		targetPoint <- nil;
 		myColor <- #black;
 	}
 	
 	action setSailForThisJuiceStand(point newJuicePlace){
-		if !(knownJuicePlaces contains(newJuicePlace)){
+		if memoryScenario and !(knownJuicePlaces contains(newJuicePlace)){
 			knownJuicePlaces <- knownJuicePlaces + newJuicePlace;	
 		}
 		targetPoint <- newJuicePlace; 
@@ -66,7 +68,7 @@ species FestivalGuest skills:[moving]{
 	}
 	
 	action setSailForThisFoodStand(point newFoodPlace){
-	 	if !(knownFoodPlaces contains(newFoodPlace)){
+	 	if memoryScenario and !(knownFoodPlaces contains(newFoodPlace)){
 	 		knownFoodPlaces <- knownFoodPlaces + newFoodPlace;
 	 	}
 		targetPoint <- newFoodPlace; 
@@ -124,14 +126,14 @@ species FestivalGuest skills:[moving]{
 			point food <- nil;
 			if isThirsty() and isHungry() {
 				if flip(0.5){
-					ask one_of(InformationCenter){ juice <-getAJuiceShop();} 
+					ask one_of(InformationCenter){ juice <-getANewJuiceShop(myself.location, myself.knownJuicePlaces);} 
 				} else {
-					ask one_of(InformationCenter){food <-getAFoodShop();} 
+					ask one_of(InformationCenter){food <-getANewFoodShop(myself.location, myself.knownFoodPlaces);} 
 				}
 			} else if isThirsty() {
-			 	ask one_of(InformationCenter){ juice <-getAJuiceShop();} 
+			 	ask one_of(InformationCenter){ juice <-getANewJuiceShop(myself.location, myself.knownJuicePlaces);} 
 			} else {
-				ask one_of(InformationCenter){food <-getAFoodShop();} 
+				ask one_of(InformationCenter){food <-getANewFoodShop(myself.location, myself.knownFoodPlaces);}  
 			}
 			if juice != nil {
 				do setSailForThisJuiceStand(juice);
@@ -233,13 +235,21 @@ species InformationCenter {
 		draw square(10) at: location color: #orange;
 	}
 	
-	point getAFoodShop{
-		return one_of(Shop where (each.isFoodShop)).location;
+	point getANewFoodShop(point origin, list<point> oldLocations){
+		return closest_to(Shop where (each.isFoodShop and !contains(oldLocations, each.location)), origin).location;
 	}
 	
-	point getAJuiceShop{
-		return one_of(Shop where (!each.isFoodShop)).location;
+	point getANewJuiceShop(point origin, list<point> oldLocations){
+		return closest_to(Shop where (!each.isFoodShop and !contains(oldLocations, each.location)), origin).location;
 	} 
+	
+	point getClosestFoodShop(point origin){
+		return closest_to(Shop where (each.isFoodShop), origin).location;
+	}
+	
+	point getClosestJuiceShop(point origin){
+		return closest_to(Shop where (!each.isFoodShop), origin).location;
+	}
 	
 	point getCopLocation{
 		return one_of(SecurityGuard).location;
@@ -247,11 +257,18 @@ species InformationCenter {
 }
 
 global {
+	bool copScenario <- false;
+	bool memoryScenario <- false;
 	init {
 		create FestivalGuest number: 100;
-		create Shop number: 5;
+		create Shop number: 2 with: (isFoodShop: true);
+		create Shop number: 2 with: (isFoodShop: false);
+		create Shop number: 2;
+		
 		create InformationCenter number: 1;
-		create SecurityGuard number:1;
+		if copScenario {
+			create SecurityGuard number:3;
+		}
 	}
 	/** Insert the global definitions, variables and actions here */
 }
