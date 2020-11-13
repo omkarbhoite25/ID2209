@@ -64,10 +64,10 @@ species Auctioner_2 skills:[fipa]{
 		loop p over: proposes{
 			write 'Reading';
 			if buyprice>=baseprice{
-				do accept_proposal with:[message::p,contents::['Deal']];
+				do accept_proposal with:[message::p,contents::['Deal from Auctioner 2']];
 			}
 			else{
-				do reject_proposal with:[message::p,contents::['No Deal']];				
+				do reject_proposal with:[message::p,contents::['No Deal from Auctioner 2']];				
 			}
 			
 			
@@ -102,10 +102,10 @@ species Auctioner_1 skills:[fipa]{
 		loop p over: proposes{
 			write 'Reading';
 			if buyprice>=baseprice{
-				do accept_proposal with:[message::p,contents::['Deal']];
+				do accept_proposal with:[message::p,contents::['Deal from Auctioner 1']];
 			}
 			else{
-				do reject_proposal with:[message::p,contents::['No Deal']];
+				do reject_proposal with:[message::p,contents::['No Deal from Auctioner 1']];
 				buyprice<-buyprice+10;				
 			}
 			
