@@ -17,9 +17,13 @@ global{
 	float buyprice;
 	
 	init{
+		create Auctioncenter number:1{
+			location<-{25,25};
+		}
 		create Auctioner_1 number:1{
 			startprice<-1000;
 			baseprice<-500;
+			location<-{20,20};
 			
 		}
 		create Participant number:3{
@@ -28,11 +32,20 @@ global{
 		create Auctioner_2 number:1{
 			startprice<-1000;
 			baseprice<-500;
+			location<-{20,30};
 		}
 			bidder <- Participant;
 		}
 		
 	}
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+species Auctioncenter {
+	aspect default{
+		draw square(20) color:#aqua ;
+	}
+}
+	
+	
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 species Auctioner_2 skills:[fipa]{
 	float price<-300;
@@ -150,8 +163,8 @@ species Participant skills:[fipa,moving]{
 		ask Auctioner_2{
 		II_location<-location;
 	}	
-		do goto target:{II_location.x+3,II_location.y+2,II_location.z} speed:1.0;
-		do goto target:{I_location.x+3,I_location.y+2,I_location.z} speed:1.0;
+		do goto target:{II_location.x+3,II_location.y+2,II_location.z} speed:10.0;
+		do goto target:{I_location.x+3,I_location.y+2,I_location.z} speed:10.0;
 	}
 }
 
@@ -163,6 +176,7 @@ experiment main type: gui{
 			species Auctioner_1;
 			species Participant;
 			species Auctioner_2;
+			species Auctioncenter;
 			
 		}
 	}
