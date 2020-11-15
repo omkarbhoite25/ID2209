@@ -373,8 +373,8 @@ global {
 			create Dutch_Participant number: 3 with: (items:["teapot"]);
 			create Dutch_Participant number: 4 with: (items:["soda"]);
 			//Auctioneers sell different types of things
-			create Dutch_Auctioner number:2 with: (itemType:"teapot");
-			create Dutch_Auctioner number:2 with: (itemType:"soda");
+			create Dutch_Auctioner number:2 with: (itemType:"teapot", numberOfItems:2);
+			create Dutch_Auctioner number:2 with: (itemType:"soda", numberOfItems:2);
 		} else if scenario = 2 {
 			int a <- rnd(50,60);
 			int b <- rnd(50,70);
