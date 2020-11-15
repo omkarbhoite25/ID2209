@@ -11,10 +11,10 @@ species Dutch_Auctioner skills:[fipa]{
 	int sellPrice <- startPrice;
 	int saleMinimum <- rnd(30,70);
 	int downStep <- 10;
-	int numberOfItems <-3;
+	int numberOfItems <-1;
 	int money <- 0;
 	float startOfSale <- 0.0;
-	string itemType <- 'Shoes';
+	string itemType <- 'teapot';
 	bool isDone <- false;
 	float startNewAuctionTime <- 1.0;
 	list participants <- [];
@@ -23,6 +23,7 @@ species Dutch_Auctioner skills:[fipa]{
 		write "-----------------------------";
 		if(isDone){
 			write name+": Done selling items, due to lack of reasonable buyers. Made "+money;
+			startNewAuctionTime <- -1.0;
 		} else {
 			//housekeeping for new auction.
 			startOfSale <-time;
@@ -58,6 +59,7 @@ species Dutch_Auctioner skills:[fipa]{
 		if numberOfItems != 0 {
 			startNewAuctionTime <- time+auctionWaitTime;
 		} else {
+			isDone <- true;
 			write name+": Done selling items, sold everything! Made "+money;
 		}
 		
@@ -108,7 +110,6 @@ species Dutch_Auctioner skills:[fipa]{
 			bool potentialCustomers <- false;
 			loop r over: refuses{
 				if bool(list(r.contents)[0]){
-					write name+": "+r.sender+" says they may buy in future";
 					potentialCustomers <- true;	
 				}
 			}
@@ -116,6 +117,7 @@ species Dutch_Auctioner skills:[fipa]{
 				write name + ": Has potential customers, starting new auction later";
 				startNewAuctionTime <- time+auctionWaitTime;
 			} else {
+				isDone <- true;
 				write name + ": No potential customers. Managed to make "+money;
 			}
 		}
@@ -129,6 +131,7 @@ species Dutch_Auctioner skills:[fipa]{
 	aspect default{
 		draw pyramid(2) at: location color:#yellow;
 		draw sphere(1) at: {location.x,location.y,1.5} color:#yellow; 
+		draw string(name+":"+money) at: location +{0,0,5} color:#black; 
 	}
 }
 
@@ -147,7 +150,7 @@ species Dutch_Participant skills:[fipa]{
 			if items contains(type){
 				do refuse message:inform contents:[false]; //will never join auction
 			} else {
-				write name + " joins auction for " + type;
+				write name + " joins "+ inform.sender + " for " + type;
 				inAuction <-true;
 				do agree message: inform contents:[true];
 			}	
@@ -187,25 +190,59 @@ species Dutch_Participant skills:[fipa]{
 		string trash <- rejection.contents;
 		inAuction <-false;
 	}
+	
+	aspect default{
+		draw pyramid(2) at: location color:#green;
+		draw sphere(1) at: {location.x,location.y,1.5} color:#green;
+		if items contains("teapot"){
+			draw teapot(0.25) at: {location.x,location.y+1,0.5} color:#green;
+		} 
+		if items contains("soda") {
+			draw cylinder(0.25,0.25) at: {location.x-1,location.y+1,0.5} color:#green;
+		}
+		if items contains("box") {
+			draw cube(0.25) at: {location.x-1.5,location.y+1,0.5} color:#green;
+		}
+	}
 }
 
 global {
-		//Turns cop scenario on/off
-	bool copScenario <- true;
-	
-	//Turns memory challenge on/off
-	bool memoryScenario <- true;
-	int auctionWaitTime <- 5;
+	//Scenarios 0,1,2 (0 is basic, 1 is challenge 1, 2 is challenge 2)
+	int scenario <- 1; 
+	//Time auctioneers need to wait between starting new auctions.
+	int auctionWaitTime <- 10;
 	init {
-		create Dutch_Participant number: 20;
-		create Dutch_Auctioner number:5;
+		if scenario = 0{
+			//Everyone wants tea
+			create Dutch_Participant number: 3;
+			create Dutch_Auctioner number:1;
+		} else if scenario = 1{
+			//People want what they don't have.
+			create Dutch_Participant number: 3 with: (items:["teapot"]);
+			create Dutch_Participant number: 4 with: (items:["soda"]);
+			//Auctioneers sell different types of things
+			create Dutch_Auctioner number:2 with: (itemType:"teapot");
+			create Dutch_Auctioner number:2 with: (itemType:"soda");
+		} else if scenario = 2 {
+			//People want what they don't have.
+			create Dutch_Participant number: 3;
+			//create English_Participant number: 3;
+			//create Japanese_Participant number: 3;
+			//create Dutch
+			create Dutch_Auctioner number:1 with: (itemType:"teapot");
+			//create English_Auctioner number:1 with: (itemType:"soda");
+			//create Japanese_Auctioner number:1 with: (itemType:"box");
+		}
+
 	}
 }
 
 experiment main type: gui{
 	output{
 		display map type: opengl {
-			
+			//Teapot (teapot), Soda (cylinder), Box (square)
+			species Dutch_Auctioner aspect: default; 
+			species Dutch_Participant aspect: default;
 		}
 	}
 }
