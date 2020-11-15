@@ -48,7 +48,10 @@ species Dutch_Auctioner parent: Auctioneer {
 	
 	reflex start_Auction  when: (startNewAuctionTime != -1 and time >= startNewAuctionTime  and empty(participants)){
 		write "-----------------------------";
-		if(isDone){
+		if(numberOfItems <=0){
+			write name+": Out of items to sell. Made "+money;
+			startNewAuctionTime <- -1.0;
+		} else if(isDone){
 			write name+": Done selling items, due to lack of reasonable buyers. Made "+money;
 			startNewAuctionTime <- -1.0;
 		} else {
@@ -213,6 +216,7 @@ species Dutch_Participant parent: Participant skills:[fipa]{
 
 species English_Auctioner parent: Auctioneer skills:[fipa]{
 	message topBidder <- nil;
+	int saleMinimum <- rnd(20,30);
 	
 	reflex start_Auction  when: (startNewAuctionTime != -1 and time >= startNewAuctionTime  and empty(participants)){
 		write "-----------------------------";
@@ -221,7 +225,7 @@ species English_Auctioner parent: Auctioneer skills:[fipa]{
 			startNewAuctionTime <- -1.0;
 		} else {
 			//housekeeping for new auction.
-			sellPrice <-rnd(20,30);
+			sellPrice <-saleMinimum;
 			write name+': Do I hear $'+sellPrice + " for this fantastic "+ itemType+"?";
 			//Asking people to join auction
 			topBidder <- nil;
@@ -289,6 +293,7 @@ species English_Participant  parent: Participant skills:[fipa]{
 }
 
 species Japanese_Auctioner parent: Auctioneer skills:[fipa]{
+	int saleMinimum <- rnd(20,30);
 	reflex start_Auction  when: (startNewAuctionTime != -1 and time >= startNewAuctionTime  and empty(participants)){
 		write "-----------------------------";
 		if(isDone){
@@ -296,7 +301,7 @@ species Japanese_Auctioner parent: Auctioneer skills:[fipa]{
 			startNewAuctionTime <- -1.0;
 		} else {
 			//housekeeping for new auction.
-			sellPrice <-rnd(20,30);
+			sellPrice <-saleMinimum;
 			write name+': '+itemType+' at $'+sellPrice ;
 			//Asking people to join auction
 			participants <-list(Japanese_Participant);
@@ -371,14 +376,27 @@ global {
 			create Dutch_Auctioner number:2 with: (itemType:"teapot");
 			create Dutch_Auctioner number:2 with: (itemType:"soda");
 		} else if scenario = 2 {
+			int a <- rnd(50,60);
+			int b <- rnd(50,70);
+			int c <- rnd(50,80);
+			int minimum <-rnd(30,70);
+			write "Starting params a:"+a+", b:"+b+", c:"+c+" --- minimum:"+minimum;
 			//People want what they don't have.
-			create Dutch_Participant number: 3;
-			create English_Participant number: 3;
-			create Japanese_Participant number: 3;
-			//create Dutch
-			create Dutch_Auctioner number:1 with: (itemType:"teapot");
-			create English_Auctioner number:1 with: (itemType:"soda");
-			create Japanese_Auctioner number:1 with: (itemType:"box");
+			create Dutch_Participant number: 1 with: (buyPrice: a);
+			create Dutch_Participant number: 1 with: (buyPrice: b);
+			create Dutch_Participant number: 1 with: (buyPrice: c);
+
+			create English_Participant number: 1 with: (buyPrice: a);
+			create English_Participant number: 1 with: (buyPrice: b);
+			create English_Participant number: 1 with: (buyPrice: c);
+
+			create Japanese_Participant number: 1 with: (buyPrice: a);
+			create Japanese_Participant number: 1 with: (buyPrice: b);
+			create Japanese_Participant number: 1 with: (buyPrice: c);
+
+			create Dutch_Auctioner number:1 with: (itemType:"teapot", saleMinimum:minimum);
+			create English_Auctioner number:1 with: (itemType:"soda", saleMinimum:minimum);
+			create Japanese_Auctioner number:1 with: (itemType:"box", saleMinimum:minimum);
 		}
 
 	}
