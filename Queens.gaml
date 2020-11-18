@@ -38,10 +38,36 @@ species Queen skills: [fipa]{
     }
     
     bool locationIsValid{
-    	if !empty(Queen where(each.cell.grid_x = cell.grid_x)){
-    		
+    	//Checks rows.
+    	if !empty(Queen where(each.cell.grid_y = cell.grid_y)){
+    		return false;
     	}
-    	return false;
+    	//Check diagonal up.
+    	int x <- cell.grid_x -1;
+    	int y <- cell.grid_y -1;
+    	
+    	loop while: (x !=-1) and (y!=-1){
+    		board_cell cellToCheck <-board_cell grid_at {x, y};
+    		if !empty(Queen where(each.cell = cellToCheck)){
+    			return false;
+    		}
+    		x <- cell.grid_x -1;
+    		y <- cell.grid_y -1;
+    	}
+    	
+    	//Check diagonal down.
+    	x <- cell.grid_x -1;
+    	y <- cell.grid_y +1;
+    	
+    	loop while: (x !=-1) and (y<N){
+    		board_cell cellToCheck <-board_cell grid_at {x, y};
+    		if !empty(Queen where(each.cell = cellToCheck)){
+    			return false;
+    		}
+    		x <- cell.grid_x -1;
+    		y <- cell.grid_y +1;
+    	}
+    	return true;
     }
     
 }
