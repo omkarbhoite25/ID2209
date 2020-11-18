@@ -17,13 +17,31 @@ species Queen skills: [fipa]{
 	//check all positions.
 	//if none valid, say to "previous" queen, please move.
 	board_cell cell <- one_of(board_cell);
+	list previousCells <- [];
 	Queen parent <- nil;
+	
 	init {
 		location <- cell.location;
+		//if invalid location, ask parent to move
 		
 	}
+	
+	
 	aspect base {
     	draw circle(3) color: #blue;
+    }
+    
+    reflex goToNextValidCell when: !empty(requests){
+    	message req <- requests at 0;
+    	previousCells<- previousCells + cell;
+    		
+    }
+    
+    bool locationIsValid{
+    	if !empty(Queen where(each.cell.grid_x = cell.grid_x)){
+    		
+    	}
+    	return false;
     }
     
 }
