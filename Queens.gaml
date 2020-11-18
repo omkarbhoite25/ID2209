@@ -23,7 +23,9 @@ species Queen skills: [fipa]{
 	init {
 		location <- cell.location;
 		//if invalid location, ask parent to move
-		
+		if !locationIsValid(){
+			write name+"Is sad because my location is not valid :(";
+		}
 	}
 	
 	
@@ -39,7 +41,7 @@ species Queen skills: [fipa]{
     
     bool locationIsValid{
     	//Checks rows.
-    	if !empty(Queen where(each.cell.grid_y = cell.grid_y)){
+    	if length(Queen where(each.cell.grid_y = cell.grid_y)) >1{
     		return false;
     	}
     	//Check diagonal up.
@@ -79,6 +81,7 @@ grid board_cell width: N height: N neighbors: 8 {
 global {
 	int N <- 4;
     init {
+    	write "Creating Queen 0";
     	create Queen with: (cell: board_cell grid_at {0, 0});
     	loop i from: 1 to: N {
     		board_cell thing <- one_of(board_cell where(each.grid_x = i));
