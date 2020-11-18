@@ -14,14 +14,11 @@ model Queens
 // grid based approach from predator / prey
 
 species Queen skills: [fipa]{
-	//check all positions.
-	//if none valid, say to "previous" queen, please move.
 	board_cell cell <- nil;
 	list previousCells <- [];
 	Queen parent <- nil;
 	bool informNext <- false;
 	
-	//When you ask your parent to move, empty your previousCells list.
 	init {
 		if cell != nil {
 			location <- cell.location;
@@ -38,11 +35,12 @@ species Queen skills: [fipa]{
 		int column <- cell.grid_x+1;
 		if (column <N){
 			write name + " asking" + column + "to place itself...";
+			//do start_conversation to: [Queen at (column)] protocol: 'no-protocol' performative: 'cfp' contents: [column];
 			ask Queen at (column){
 				do placeYourself(column);
 			}
 		}
-		write name + " Done infroming next";
+		write name + " Done informing next";
 	}
 	
 	aspect base {
@@ -68,6 +66,20 @@ species Queen skills: [fipa]{
     	}
     }
     
+    reflex handle_parent_says_to_place when: !empty(cfps){
+    	message cfp <- cfps at 0;
+    	write name+": parent told me I can place myself";
+    	do placeYourself(int(list(cfp.contents)[0]));
+    }
+    
+    reflex handle_child_says_please_move when: !empty(informs){
+    	message inform <- informs at 0;
+    	list contents <- list(inform.contents);
+    	write name+": my child asked me to move";
+    	do addToPrevious( board_cell(contents[0]));
+    	do placeYourself( int(contents[1]));
+    }
+    
     action placeYourself(int startX){
     	cell <- board_cell grid_at {startX, 0};
     	location <- cell.location;
@@ -79,6 +91,8 @@ species Queen skills: [fipa]{
     			cell <- nil;
     			location <- {0,0};
     			previousCells <- [];
+    			//TODO : Using this message -> things not working correctly anymore. 
+    			//do start_conversation to: [Queen at (column)] protocol: 'no-protocol' performative: 'inform' contents: [cell, column];
     			ask Queen at (column){
     				do addToPrevious(cell);
 					do placeYourself(column);
@@ -92,11 +106,9 @@ species Queen skills: [fipa]{
     bool locationIsValid{
     	//Checks rows.
     	if previousCells contains cell{
-    		write name + " Has previously been to "+cell;
     		return false;
     	}
     	if length(Queen where(each.cell!=nil and each.cell.grid_y = cell.grid_y)) >1{
-    		write name + " found other queen on row";
     		return false;
     	}
     	//Check diagonal up.
@@ -106,7 +118,6 @@ species Queen skills: [fipa]{
     	loop while: (x !=-1) and (y!=-1){
     		board_cell cellToCheck <-board_cell grid_at {x, y};
     		if !empty(Queen where(each.cell = cellToCheck)){
-    			write name + " found other queen on upper diagonal";
     			return false;
     		}
     		x <- x-1;
