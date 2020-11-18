@@ -31,16 +31,16 @@ species Queen skills: [fipa]{
 	}
 	
 	action informMyChild{
-		write name + " informing next";
+		//write name + " informing next";
 		int column <- cell.grid_x+1;
 		if (column <N){
-			write name + " asking" + column + "to place itself...";
+			//write name + " asking" + column + "to place itself...";
 			do start_conversation to: [Queen at (column)] protocol: 'no-protocol' performative: 'cfp' contents: [column];
 			//ask Queen at (column){
 			//	do placeYourself(column);
 			//}
 		}
-		write name + " Done informing next";
+		//write name + " Done informing next";
 	}
 	
 	aspect base {
@@ -52,10 +52,10 @@ species Queen skills: [fipa]{
     		do addToPrevious(cell);
     		cell <- board_cell grid_at {cell.grid_x,cell.grid_y+1};
     		location <- cell.location;
-    		write name + " is now on "+cell.grid_x+","+cell.grid_y;
+    		//write name + " is now on "+cell.grid_x+","+cell.grid_y;
     		return true;
     	} else {
-    		write name+": No valid locations left..";
+    		//write name+": No valid locations left..";
     		return false;
     	}
 
@@ -63,43 +63,48 @@ species Queen skills: [fipa]{
     action addToPrevious(board_cell toAdd){
     	if !(previousCells contains toAdd){
     		previousCells <- previousCells + toAdd;
+    		//write name + " adding "+ toAdd.grid_x + ","+toAdd.grid_y;
+    	} else {
+    		//write name + " not adding "+ toAdd.grid_x + ","+toAdd.grid_y;
     	}
     }
     
     reflex handle_parent_says_to_place when: !empty(cfps){
     	message cfp <- cfps at 0;
-    	write name+": parent told me I can place myself";
+    	//write name+": parent told me I can place myself";
     	do placeYourself(int(list(cfp.contents)[0]));
     }
     
     reflex handle_child_says_please_move when: !empty(informs){
     	message inform <- informs at 0;
     	list contents <- list(inform.contents);
-    	write name+": my child asked me to move";
-    	do addToPrevious( board_cell(contents[0]));
-    	do placeYourself( int(contents[1]));
+    	//write name+": my child asked me to move";
+    	do addToPrevious( cell);
+    	do placeYourself( int(contents[0]));
     }
     
     action placeYourself(int startX){
     	cell <- board_cell grid_at {startX, 0};
     	location <- cell.location;
-    	write name + " Placing itself at "+cell.grid_x+","+cell.grid_y;
+    	//write name + " Placing itself at "+cell.grid_x+","+cell.grid_y;
     	loop while:!locationIsValid(){
     		if !goToNextValidCell(){
-    			write name+" asking parent to move";
+    			//write name+" asking parent to move";
     			int column <- cell.grid_x-1;
     			cell <- nil;
     			location <- {0,0};
     			previousCells <- [];
     			//TODO : Using this message -> things not working correctly anymore. 
-    			//do start_conversation to: [Queen at (column)] protocol: 'no-protocol' performative: 'inform' contents: [cell, column];
-    			ask Queen at (column){
-    				do addToPrevious(cell);
-					do placeYourself(column);
-				}
+    			do start_conversation to: [Queen at (column)] protocol: 'no-protocol' performative: 'inform' contents: [column];
+    			//ask Queen at (column){
+    			//	do addToPrevious(cell);
+				//	do placeYourself(column);
+				//}
+				//write name+ " returning inside placeyourself";
     			return;
     		}
     	}
+    	//write name+ " Calling informMyChild";
     	do informMyChild;
     }
     
@@ -131,13 +136,13 @@ species Queen skills: [fipa]{
     	loop while: (x !=-1) and (y<N){
     		board_cell cellToCheck <-board_cell grid_at {x, y};
     		if !empty(Queen where(each.cell = cellToCheck)){
-    			write name + " found other queen on lower diagonal";
+    			//write name + " found other queen on lower diagonal";
     			return false;
     		}
     		x <- x-1;
     		y <- y+1;
     	}
-    	write name + " found no conflicting queens";
+    	//write name + " found no conflicting queens";
     	return true;
     }
     
@@ -146,7 +151,7 @@ species Queen skills: [fipa]{
 grid board_cell width: N height: N neighbors: 8 {}
    
 global {
-	int N <- 8;
+	int N <- 18;
 	Queen topQueen <- nil;
     init {
     	create Queen with: (cell: board_cell grid_at {0, 0}, informNext:true);
