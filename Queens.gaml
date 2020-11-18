@@ -35,10 +35,10 @@ species Queen skills: [fipa]{
 		int column <- cell.grid_x+1;
 		if (column <N){
 			write name + " asking" + column + "to place itself...";
-			//do start_conversation to: [Queen at (column)] protocol: 'no-protocol' performative: 'cfp' contents: [column];
-			ask Queen at (column){
-				do placeYourself(column);
-			}
+			do start_conversation to: [Queen at (column)] protocol: 'no-protocol' performative: 'cfp' contents: [column];
+			//ask Queen at (column){
+			//	do placeYourself(column);
+			//}
 		}
 		write name + " Done informing next";
 	}
