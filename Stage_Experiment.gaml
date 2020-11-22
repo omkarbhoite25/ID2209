@@ -75,7 +75,19 @@ species Guest skills:[fipa]{
 	float currentUtility <- -1.0;	
 	bool notWaiting <- true;
 	point offset <- {0,0,0};
+	float crowdFactor <-0.0;
+	rgb colour <- #green;
+	
 	init {
+		if(flip(0.5)){
+			//Dislikes crowds
+			colour <- #aqua;
+			crowdFactor <- 0.5;
+		} else {
+			//Likes to party
+			colour <- #hotpink;
+			crowdFactor <- 2.0;
+		}
 		offset <- {xOffset,8,0};
 		xOffset <- xOffset +3 ;
 	}
@@ -116,8 +128,8 @@ species Guest skills:[fipa]{
 	}
 	
 	aspect default{
-		draw pyramid(2) at: location color:#green;
-		draw sphere(1) at: {location.x,location.y,1.5} color:#green; 
+		draw pyramid(2) at: location color:colour;
+		draw sphere(1) at: {location.x,location.y,1.5} color:colour; 
 	}
 	//Can travel to Stage
 	//Ask Stages about their attributes over FIPA/
