@@ -21,13 +21,13 @@ species Stage skills:[fipa]{
 	}
 	
 	reflex startConcert when: beginNewConcert{
-		write name + " has started their concert";
+		//write name + " has started their concert";
 		concertIsOn <- true;
 		beginNewConcert <- false;
 	}
 	
 	reflex endConcert when: time = concertEndTime {
-		write name + " concert has ended";
+		//write name + " concert has ended";
 		do concertCleanup();
 		do prepareNewConcert();
 	}
@@ -72,7 +72,6 @@ species Stage skills:[fipa]{
 species Guest skills:[fipa]{
 	list attributeLikes <- [rnd(0.1,1.0), rnd(0.1,1.0), rnd(0.1,1.0), rnd(0.1,1.0), rnd(0.1,1.0), rnd(0.1,1.0)];
 	Stage concert <- nil;
-	float currentUtility <- -1.0;	
 	bool notWaiting <- true;
 	point offset <- {0,0,0};
 	float crowdFactor <-0.0;
@@ -95,33 +94,46 @@ species Guest skills:[fipa]{
 	
 	reflex prepareToGoToNewConcert when: (concert = nil or !concert.concertIsOn) and notWaiting{
 		//Ask for concert information
-		currentUtility <- 0.0;
 		location <- offset;
 		write name + " Preparing to go to a new concert";
 		do start_conversation to: list(Stage) protocol: 'no-protocol' performative: 'request' contents: [];
 		notWaiting <-false;
 	}
 	
-	reflex evaluateNextConcert when:!empty(informs) {
+	reflex evaluateNextConcert when:!empty(informs){
 		concert <- nil;
 		write name +": Got "+length(informs) +" Messages";
+		list utilityPerStage <- [];
+		list stageOrder <- [];
+		float topUtility <- 0.0;
 		loop p over: informs {
 			list propConcertAttributes <- p.contents;
 			float propUtility <- calculateUtility(propConcertAttributes);
-			if propUtility > currentUtility {
-				concert <- p.sender;
-				currentUtility <- propUtility;
+			loop i from:0 to: length(utilityPerStage) {
+				if(i = length(utilityPerStage)){
+					add(propUtility) to:utilityPerStage;
+					add(p.sender) to: stageOrder;
+					break;
+				} else if propUtility > float(utilityPerStage[i]){
+					add(propUtility) to:utilityPerStage at: i;
+					add(p.sender) to: stageOrder at:i;
+					break;
+				}
 			}
 		}
-		write name + " Chose concert " + concert + " w/ utility "+currentUtility;
-		notWaiting <-true;
-		location <- concert.location + offset;
+		
+		do start_conversation to:(Guest where(each.isOrganizer)) performative:'cfp' contents:[utilityPerStage, stageOrder, crowdFactor];
 	}
 	
 	reflex getAssigned when: !empty(agrees) {
 		message assignment <- agrees at 0;
+		notWaiting <-true;
 		concert <- list(assignment.contents)[0]; //assuming each Guest will be given a concert
 		location <- concert.location + offset;
+	}
+	
+	reflex organizeEveryone when: !empty(cfps){
+		write name+"has "+length(cfps);
 	}
 	
 	float calculateUtility(list proposed){
