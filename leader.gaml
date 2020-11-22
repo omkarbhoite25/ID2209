@@ -133,7 +133,7 @@ species Guest skills:[fipa]{
 	}
 	
 	reflex organizeEveryone when: !empty(cfps){
-		write name+"has "+length(cfps);
+		//each cfp in cfps has [utilityPerStage, stageOrder, crowdFactor]
 	}
 	
 	float calculateUtility(list proposed){
