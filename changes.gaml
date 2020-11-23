@@ -53,15 +53,6 @@ species Stage skills: [fipa] {
 	int red <- 0;
 	int green <-0;	
 	
-	init{///I don't know about this init////////////////////
-		float Lights<-concertAttributes[0];
-		float camera<-concertAttributes[1];
-		float band_fame<-concertAttributes[2];
-		float band_quality<-concertAttributes[3];
-		float ambience<-concertAttributes[4];
-		float audio_quality<-concertAttributes[5];
-	}
-	
 	aspect default {
 		if eventOn{
 			color <- flip(0.5)? #purple : rgb(red,green,0);
@@ -163,9 +154,14 @@ species Guest skills: [moving , fipa]{
 	}
 	
 	
-	action calcUtility(Stage d){
+	action calcUtility(Stage proposed){
 		float total <- 0.0;
-			total<-(d.Lights * self.attributeLikes[0] + d.camera * self.attributeLikes[1] + d.band_fame * self.attributeLikes[2] + d.band_quality * self.attributeLikes[3] + d.ambience * self.attributeLikes[4] +d.audio_quality*self.attributeLikes[5]+ d.crowdmass * self.crowd_pref );
+		loop i from:0 to:5 {
+			total <- total + float(proposed.concertAttributes[i])* attributeLikes[i];
+		}
+		if(proposed.crowdmass > 0) {
+			total <- total* crowd_pref;
+		}
 		return total;
 	}
 	
