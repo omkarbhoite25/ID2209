@@ -7,7 +7,6 @@
 model NewModel
 
 global {
-	geometry shape <- square(120#m);
 	point info_;
 	list<Stage> Guest_at_stage;
 	list<point> Stage_Location;
@@ -16,11 +15,11 @@ global {
 	init {
 		create Stage returns: d1 {location <- {20#m, 20#m};}
 		Stage_Location <+ d1[0].location;
-		create Stage returns: d2 {location <- {50#m, 20#m};}
+		create Stage returns: d2 {location <- {80#m, 20#m};}
 		Stage_Location <+ d2[0].location;
-		create Stage returns: d3 {location <- {20#m, 50#m};}
+		create Stage returns: d3 {location <- {20#m, 80#m};}
 		Stage_Location <+ d3[0].location;
-		create Stage returns: d4 {location <- {50#m, 50#m};}
+		create Stage returns: d4 {location <- {80#m, 80#m};}
 		Stage_Location <+ d4[0].location;
 		Guest_at_stage <+d1[0];
 		Guest_at_stage <+d2[0];
@@ -36,14 +35,9 @@ global {
 			crowd_pref <- -2.5;			
 		}	
 	}
-	aspect default {
-		draw square(100#m) at: {50, 50} color: #black;
-	}
 }
 
 species Stage skills: [fipa] {
-	float width <- 30#m;
-	float height <- 30#m;
 	bool eventOn <- false;
 	int countdown <- 100 * rnd(1,12,1) update: countdown - 1;
 	//Lights, camera, band_fame, band_quality, ambience, audio_quality
@@ -60,7 +54,9 @@ species Stage skills: [fipa] {
 			color <-#white;
 		}
 		
-		draw rectangle(width, height) at: location color: color;
+		draw cube(15) at: location color: color;
+		draw pyramid(15) at: {location.x,location.y,location.z+15} color: color;
+		
 		draw "Lights: "+string(concertAttributes[0]) at: location + {-10#m, 0}  color: #aqua font: font('Default', 18, #bold) ;
 		draw "camera: "+string(concertAttributes[1]) at: location + {-10#m, 3}  color: #aqua font: font('Default', 18, #bold) ;
 		draw "band_fame: "+string(concertAttributes[2]) at: location + {-10#m, 6}  color: #aqua font: font('Default', 18, #bold) ;
@@ -155,10 +151,9 @@ species Guest skills: [moving , fipa]{
 	
 	
 	action calcUtility(Stage proposed){
-		write proposed;
 		float total <- 0.0;
 		loop i from:0 to:5 {
-			total <- total + proposed.concertAttributes[i]* attributeLikes[i];
+			total <- total + float(proposed.concertAttributes[i])* attributeLikes[i];
 		}
 		if(proposed.crowdmass > 0) {
 			total <- total* crowd_pref;
@@ -177,14 +172,14 @@ species Guest skills: [moving , fipa]{
 			float util <- x3;
 			//write " Event from "+ msg.sender;
 			if (util > currentUtil){
-					write name+": Proposed util: "+ util + "for "+ c3[7]+" is better than "+currentUtil;
+					write name+": Proposed util: "+ util + "for "+ c3[8]+" is better than "+currentUtil;
 					currentUtil <- util;
 					if currentStage!=nil{
 						do start_conversation (to: [currentStage], protocol: 'fipa-propose', performative: 'cfp', contents: ['Remove']);						
 						currentStage.guestsIn >- self;
 					}
 					do accept_proposal ( message : msg, contents : [] );
-					currentStage<- c3[7];
+					currentStage<- c3[8];
 					isIdle <- false;
 					currentStage.guestsIn <+self;	
 			}else{
@@ -219,9 +214,9 @@ species Guest skills: [moving , fipa]{
 }
 
 
-experiment main type:gui{
+experiment main type:gui {
 	output {
-		display my_display type:opengl{
+		display my_display type:opengl background:#yellow{
 			species Stage;
 			species Guest;
 		}
