@@ -155,9 +155,10 @@ species Guest skills: [moving , fipa]{
 	
 	
 	action calcUtility(Stage proposed){
+		write proposed;
 		float total <- 0.0;
 		loop i from:0 to:5 {
-			total <- total + float(proposed.concertAttributes[i])* attributeLikes[i];
+			total <- total + proposed.concertAttributes[i]* attributeLikes[i];
 		}
 		if(proposed.crowdmass > 0) {
 			total <- total* crowd_pref;
@@ -172,7 +173,7 @@ species Guest skills: [moving , fipa]{
 		if(x = 'Start' )//Event start
 		{			
 			list<unknown> c3 <- msg.contents;
-			float x3 <- float(calcUtility(c3[7]));
+			float x3 <- float(calcUtility(c3[8]));
 			float util <- x3;
 			//write " Event from "+ msg.sender;
 			if (util > currentUtil){
