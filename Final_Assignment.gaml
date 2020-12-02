@@ -25,6 +25,9 @@ global{
 		
 	}
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 species Food_Shops{
 	aspect default{
 		draw "Food Shop " at: {location.x,location.y,location.z+12}   color: #black font: font('Default', 18, #bold)  ;
@@ -65,7 +68,12 @@ species gaming_booth{
 		
 	}
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 species Journalist{
+	list traits<-[rnd(1,10),rnd(1,10),rnd(1,10)]; //trait solitary, consistent, friendly
+	
 	aspect default{
 		draw sphere(1) at: {location.x,location.y,location.z+2} color:#green;
 		draw pyramid(2) at: location color:#green;
@@ -73,6 +81,7 @@ species Journalist{
 	}
 }
 species Rock_Music_Lover{
+	list traits<-[rnd(1,10),rnd(1,10),rnd(1,10)];//trait hyper/temper, too loudy, taklative
 	aspect default{
 		draw sphere(1) at: {location.x,location.y,location.z+2} color:#blue;
 		draw pyramid(2) at: location color:#blue;
@@ -80,6 +89,7 @@ species Rock_Music_Lover{
 	}
 }
 species Chillax_dudes{
+	list trait<-[rnd(1,10),rnd(1,10),rnd(1,10)];//trait calm, gullible, sensitive 
 	aspect default{
 		draw sphere(1) at: {location.x,location.y,location.z+2} color:#aqua;
 		draw pyramid(2) at: location color:#aqua;
@@ -87,6 +97,7 @@ species Chillax_dudes{
 	}
 }
 species Party_dudes{
+	list traits<-[rnd(1,10),rnd(1,10),rnd(1,10)];// energetic, generous, friendly
 	aspect default{
 		draw sphere(1) at: {location.x,location.y,location.z+2} color:#brown;
 		draw pyramid(2) at: location color:#brown;
@@ -94,6 +105,7 @@ species Party_dudes{
 	}
 }
 species Food_lovers{
+	list traits<-[rnd(1,10),rnd(1,10),rnd(1,10)];// hyper, energetic, solitary
 	aspect default{
 		draw sphere(1) at: {location.x,location.y,location.z+2} color:#yellow;
 		draw pyramid(2) at: location color:#yellow;
@@ -101,11 +113,12 @@ species Food_lovers{
 	}
 }
 species Security_Guard{aspect default{
+	list traits<-[rnd(1,10),rnd(1,10),rnd(1,10)];// confident, organized, cautious
 		draw sphere(1) at: {location.x,location.y,location.z+2} color:#red;
 		draw pyramid(2) at: location color:#red;
 		
 	}}
-
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 experiment main type: gui{
 	output{
 		display map type: opengl background: #lightpink{
