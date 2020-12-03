@@ -29,13 +29,14 @@ species Base_Person {
 	}
 }
 
+//Wants to eat people
 species Zombie parent: Base_Person {
 	rgb myColor <- #black;
 	
 }
 
 //Avoids zombies
-//needs to eat
+//needs to eat (not people)
 species Guest parent: Base_Person {
 	rgb myColor <- #green;
 	
@@ -46,7 +47,15 @@ species Guest parent: Base_Person {
 species Soldier parent: Base_Person{
 	float power <- rnd(0.8,5.0);
 	float range <- rnd(5.0,10.0);
+	//float accuracy <_ rnd(0.5,0.99) //Optional, this could affect the shooting at zombies. They could fail to shoot zombie.
 	rgb myColor <- #blue;
+	
+	list<Zombie> zombiesWithinRange{
+		return Zombie where(each.location distance_to location <range);
+	}
+	reflex shootAtZombie when: !empty(zombiesWithinRange) {
+		
+	}
 }
 
 //Stays a distance away from zombies based on "bravery"
