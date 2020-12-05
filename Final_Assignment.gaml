@@ -33,6 +33,9 @@ species Base_Person {
 //Wants to eat people
 species Zombie parent: Base_Person skills:[moving] {
 	rgb myColor <-  #black;
+	reflex wander{
+		do wander amplitude:1.0;
+	}
 	
 	
 	}
@@ -48,7 +51,7 @@ species Guest parent: Base_Person {
 // Attacks zombies, for power damage at range range.
 species Soldier parent: Base_Person skills:[moving]{
 	float power <- rnd(0.8,5.0);
-	float range <- rnd(5.0,30.0);
+	float range <- rnd(5.0,10.0);
 	//float accuracy <_ rnd(0.5,0.99) //Optional, this could affect the shooting at zombies. They could fail to shoot zombie.
 	rgb myColor <- #blue;
 	point m<-location;
@@ -84,8 +87,8 @@ species Technician parent: Base_Person skills:[moving]{
 	rgb myColor <- #yellow;
 	
 	reflex wander {
-		//do wander;
-		do goto target:{50,50} speed:0.1;
+		//do wander amplitude:1.0;
+		do goto target:{50,50} speed:0.1 ;
 	}
 }
 
