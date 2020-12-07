@@ -22,9 +22,12 @@ species Base_Person skills:[moving]{
 	rgb myColor <- #aqua;
 	float sightRange <- 20.0;
 	bool isIdle <- true;
+	string textBubble <-"";
+	
 	aspect default{
 		draw sphere(1) at: {location.x,location.y,location.z+2} color:myColor;
 		draw pyramid(2) at: location color:myColor;		
+		draw string(textBubble) at:location+{-3,0,4};
 	}
 	
 	reflex beIdle when: isIdle{
@@ -70,6 +73,7 @@ species Zombie parent: Base_Person {
 	reflex huntPeople when: !empty(humansInSight) and eatingCounter = 0{
 		Base_Person target <- humansInSight closest_to location; 
 		do goto target:target;
+		textBubble <- "Hunting";
 		isIdle <-false;
 	}
 	
@@ -77,18 +81,25 @@ species Zombie parent: Base_Person {
 	reflex killPerson when: !empty(eatableHumans) {
 		Base_Person target <- eatableHumans closest_to location;
 		isIdle <-false; 
-		eatingCounter <-5;
-		create Zombie number: 3;
+		eatingCounter <-10;//Time to make eat and make new zombie
+		ask target{
+			do die;
+		}
 	}
 	
 	//Wait around a bit after killing someone.
 	reflex eatPerson when: eatingCounter !=0{
 		//Gory animation
-		
+		textBubble <- "Eating";
+		eatingCounter<- eatingCounter -1;
+		if(eatingCounter = 0){
+			create Zombie with:(location:location+{-3,0,0});
+		}
 	}
 	
 	//When no humans in sight, wander around
-	reflex becomeIdle when: empty(humansInSight){
+	reflex becomeIdle when: empty(humansInSight) and eatingCounter = 0{
+		textBubble <- "Brains";
 		isIdle <- true;
 	}
 }
