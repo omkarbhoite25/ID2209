@@ -1,0 +1,151 @@
+/**
+* Name: FinalAssignment
+* Based on the internal empty template. 
+* Author: Filip
+* Tags: 
+*/
+
+model FinalAssignment
+global{
+	init{
+		create Zombie number: 3;
+		create Soldier number: 3;
+		create Guest number: 10;
+		create Technician number: 1;
+		create Hero number: 1;
+	}
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+species Base_Person skills:[moving]{
+	float speed <- 1.0;
+	rgb myColor <- #aqua;
+	float sightRange <- 20.0;
+	bool isIdle <- true;
+	aspect default{
+		draw sphere(1) at: {location.x,location.y,location.z+2} color:myColor;
+		draw pyramid(2) at: location color:myColor;		
+	}
+	
+	reflex beIdle when: isIdle{
+		do wander amplitude: speed;
+	}
+}
+
+//Used to categorize all humans, as opposed to zombies.
+species Human parent: Base_Person {
+	
+}
+
+//Wants to eat people
+species Zombie parent: Base_Person {
+	rgb myColor <- #black;
+	init{
+		speed <- rnd(0.6,0.8);
+	}
+	
+	//Keeps track of how many cycles remain to consume a person
+	int eatingCounter <-0;
+	
+	//Range at which Zombie can eat people
+	float killRange <- 2.0;
+	
+	//List of nearby Humans
+	list humansInSight <- humansInSight() update:humansInSight();
+	
+	//Humans that we can eat
+	list eatableHumans <- humansInRange() update:humansInRange();
+	
+	//Updates humansInSight
+	list<Human> humansInSight {
+		return list<Human>(agents_at_distance(sightRange) where(!(each is Zombie)));
+	}
+	
+	//Updates eatableHumans
+	list<Human> humansInRange{
+		return list<Human>(agents_at_distance(killRange) where(!(each is Zombie)));
+	}
+	
+	//Hunt nearest person in sight
+	reflex huntPeople when: !empty(humansInSight) and eatingCounter = 0{
+		Base_Person target <- humansInSight closest_to location; 
+		do goto target:target;
+		isIdle <-false;
+	}
+	
+	//Kill and eat a person, and delay for a few cycles while eating them
+	reflex killPerson when: !empty(eatableHumans) {
+		Base_Person target <- eatableHumans closest_to location;
+		isIdle <-false; 
+		eatingCounter <-5;
+		create Zombie number: 3;
+	}
+	
+	//Wait around a bit after killing someone.
+	reflex eatPerson when: eatingCounter !=0{
+		//Gory animation
+		
+	}
+	
+	//When no humans in sight, wander around
+	reflex becomeIdle when: empty(humansInSight){
+		isIdle <- true;
+	}
+}
+
+//Avoids zombies
+//needs to eat (not people)
+species Guest parent: Human {
+	rgb myColor <- #green;
+	
+}
+
+// Follows technicians
+// Attacks zombies, for power damage at range range.
+species Soldier parent: Human{
+	float power <- rnd(0.8,5.0);
+	float range <- rnd(5.0,10.0);
+	//float accuracy <_ rnd(0.5,0.99) //Optional, this could affect the shooting at zombies. They could fail to shoot zombie.
+	rgb myColor <- #blue;
+	
+	list<Zombie> zombiesWithinRange{
+		return Zombie where(each.location distance_to location <range);
+	}
+	reflex shootAtZombie when: !empty(zombiesWithinRange) {
+		
+	}
+}
+
+//Stays a distance away from zombies based on "bravery"
+//Goal is to get to a radio tower, and repair it based on engineering_skill
+//Then get to bunker
+species Technician parent: Human{
+	float bravery <- rnd(0.8,5.0); //How far away you stay from Zombies
+	float engineering_skill <- rnd(0.5,2.0); //How fast they repair the tower
+	rgb myColor <- #yellow;
+}
+
+//Acts like Guest
+//
+species Hero parent: Human{
+	float bravery <- rnd(0.8,5.0); //How far away you stay from Zombies
+	float engineering_skill <- rnd(0.5,2.0); //How fast they repair the tower
+	rgb myColor <- #orange;
+}
+
+experiment main type: gui{
+	output{
+		display map type: opengl background: #lightpink{
+			species Zombie aspect: default;
+			species Soldier aspect: default;
+			species Guest aspect: default; 
+			species Technician aspect:default;
+			species Hero aspect:default;
+			
+		}
+	}
+}
+
+
+/* Insert your model definition here */
+
