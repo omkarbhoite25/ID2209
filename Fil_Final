@@ -8,8 +8,8 @@
 model FinalAssignment
 global{
 	init{
-		create Zombie number: 1;
-		//create Soldier number: 3;
+		create Zombie number: 20;
+		create Soldier number: 1;
 		create Guest number: 1;
 		//create Technician number: 1;
 		//create Hero number: 1;
@@ -129,7 +129,17 @@ species Guest parent: Human {
 		isIdle <-false;
 		Zombie enemy <- one_of(zombiesInSight);
 		float newHeading <- atan2(enemy.location.y-location.y, enemy.location.x-location.x);
-		//If we are at an edge, we cant keep moving into the wall..
+		//If we are at an edge, we should avoid moving into the wall..
+		//if location.y = 0{
+			
+		//} else if location.y {
+			
+		//}
+		//if location.x = 0{
+			
+		//} else if location.x {
+			
+		//}
 		do move heading:-newHeading ;		
 	}
 	
@@ -144,22 +154,26 @@ species Guest parent: Human {
 // Attacks zombies, for power damage at range range.
 species Soldier parent: Human{
 	float range <- rnd(5.0,10.0);
-	float accuracy <- rnd(0.5,0.95); //Optional, this could affect the shooting at zombies. They could fail to shoot zombie.
+	float accuracy <- rnd(0.5,0.85); //Optional, this could affect the shooting at zombies. They could fail to shoot zombie.
 	rgb myColor <- #blue;
-	list<Zombie> zombiesWithinRange <- zombiesWithinRange() update:zombiesWithinRange;
-	
 	//Small timer to prevent soldier from firing every cycle. Reloading or aiming.
-	int reloadingCounter <- 0 update: -1 min:0;
-	bool readyToFire <- true update: reloadingCounter =0;
-	
+	int reloadingCounter <- 0 update: reloadingCounter-1 min:0;
+	bool readyToFire <- true update: really();
+
+	bool really {
+		return reloadingCounter = 0;
+	}
+	list<Zombie> zombiesWithinRange <- checkZombiesInRange() update:checkZombiesInRange();	
 	//Updates above list on every cycle.
-	list<Zombie> zombiesWithinRange {
-		return Zombie where(each.location distance_to location <range);
+	list<Zombie> checkZombiesInRange {
+		return Zombie where(each.location distance_to location < range);
 	}
 	
 	//Shoots at closest zombie in shooting range, if we are ready to fire.
 	reflex shootAtZombie when: (!empty(zombiesWithinRange) and readyToFire) {
+		isIdle <-false;
 		textBubble <- "Shooting";
+		write "Time to shoot";
 		if(flip(accuracy)){
 			write name+": Hit";
 			ask zombiesWithinRange closest_to location{
@@ -168,6 +182,12 @@ species Soldier parent: Human{
 		} else {
 			write name+": Missed";
 		}
+		reloadingCounter <- 5;
+	}
+	
+	//Optional reflex, for what to do when zombie is near but gun is not loaded
+	reflex sayOhShit when: (!empty(zombiesWithinRange) and !readyToFire) {
+		//Could flee from zombie, or stand ground while reloading.
 	}
 	
 	//If you want Soldiers to hunt zomibes, change to zombiesInSight.
@@ -196,7 +216,7 @@ species Hero parent: Human{
 
 experiment main type: gui{
 	output{
-		display map type: opengl background: #lightpink{
+		display map type: opengl{
 			species Zombie aspect: default;
 			species Soldier aspect: default;
 			species Guest aspect: default; 
