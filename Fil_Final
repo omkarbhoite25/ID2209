@@ -8,11 +8,11 @@
 model FinalAssignment
 global{
 	init{
-		create Zombie number: 3;
-		create Soldier number: 3;
-		create Guest number: 10;
-		create Technician number: 1;
-		create Hero number: 1;
+		create Zombie number: 1;
+		//create Soldier number: 3;
+		create Guest number: 1;
+		//create Technician number: 1;
+		//create Hero number: 1;
 	}
 }
 
@@ -31,13 +31,24 @@ species Base_Person skills:[moving]{
 	}
 	
 	reflex beIdle when: isIdle{
-		do wander amplitude: speed;
+		do wander amplitude:90.0;
 	}
 }
 
 //Used to categorize all humans, as opposed to zombies.
 species Human parent: Base_Person {
+	list<string> funnyDeaths <- ["Blergh", "Oh no!", "Argh!", "Cruel world!", "Damn!", "I died!"];
 	
+	action descriptiveDeath{
+		write name+":"+one_of(funnyDeaths)+"X(";
+		do die;
+	}
+	list zombiesInSight <- zombiesInSight() update:zombiesInSight();
+
+	//Updates zombiesInSight
+	list<Zombie> zombiesInSight {
+		return list<Zombie>(agents_at_distance(sightRange) where((each is Zombie)));
+	}
 }
 
 //Wants to eat people
@@ -45,6 +56,7 @@ species Zombie parent: Base_Person {
 	rgb myColor <- #black;
 	init{
 		speed <- rnd(0.6,0.8);
+		write "Brains!";
 	}
 	
 	//Keeps track of how many cycles remain to consume a person
@@ -79,12 +91,13 @@ species Zombie parent: Base_Person {
 	
 	//Kill and eat a person, and delay for a few cycles while eating them
 	reflex killPerson when: !empty(eatableHumans) {
-		Base_Person target <- eatableHumans closest_to location;
+		Human target <- eatableHumans closest_to location;
 		isIdle <-false; 
 		eatingCounter <-10;//Time to make eat and make new zombie
 		ask target{
-			do die;
+			do descriptiveDeath;
 		}
+		write name+": Nom nom nom";
 	}
 	
 	//Wait around a bit after killing someone.
@@ -108,22 +121,59 @@ species Zombie parent: Base_Person {
 //needs to eat (not people)
 species Guest parent: Human {
 	rgb myColor <- #green;
+	//Avoid zombies
 	
+	//Naively flees from zombie, by running in same direction.
+	reflex fleeFromZombies when: !empty(zombiesInSight){
+		textBubble <- "Fleeing";
+		isIdle <-false;
+		Zombie enemy <- one_of(zombiesInSight);
+		float newHeading <- atan2(enemy.location.y-location.y, enemy.location.x-location.x);
+		//If we are at an edge, we cant keep moving into the wall..
+		do move heading:-newHeading ;		
+	}
+	
+	reflex becomeIdle when: empty(zombiesInSight){
+		textBubble <-"";
+		isIdle<-true;
+	}
+	//Head towards stores
 }
 
 // Follows technicians
 // Attacks zombies, for power damage at range range.
 species Soldier parent: Human{
-	float power <- rnd(0.8,5.0);
 	float range <- rnd(5.0,10.0);
-	//float accuracy <_ rnd(0.5,0.99) //Optional, this could affect the shooting at zombies. They could fail to shoot zombie.
+	float accuracy <- rnd(0.5,0.95); //Optional, this could affect the shooting at zombies. They could fail to shoot zombie.
 	rgb myColor <- #blue;
+	list<Zombie> zombiesWithinRange <- zombiesWithinRange() update:zombiesWithinRange;
 	
-	list<Zombie> zombiesWithinRange{
+	//Small timer to prevent soldier from firing every cycle. Reloading or aiming.
+	int reloadingCounter <- 0 update: -1 min:0;
+	bool readyToFire <- true update: reloadingCounter =0;
+	
+	//Updates above list on every cycle.
+	list<Zombie> zombiesWithinRange {
 		return Zombie where(each.location distance_to location <range);
 	}
-	reflex shootAtZombie when: !empty(zombiesWithinRange) {
-		
+	
+	//Shoots at closest zombie in shooting range, if we are ready to fire.
+	reflex shootAtZombie when: (!empty(zombiesWithinRange) and readyToFire) {
+		textBubble <- "Shooting";
+		if(flip(accuracy)){
+			write name+": Hit";
+			ask zombiesWithinRange closest_to location{
+				do die;
+			}
+		} else {
+			write name+": Missed";
+		}
+	}
+	
+	//If you want Soldiers to hunt zomibes, change to zombiesInSight.
+	reflex becomeIdle when: empty(zombiesWithinRange){
+		textBubble <- "";
+		isIdle <-true;
 	}
 }
 
