@@ -4,122 +4,128 @@
 * Author: Omkar
 * Tags: 
 */
-
-
 model FinalAssignment
 global{
+	int NumberofSoldier<-2;
 	init{
-		create Zombie number: 100;
-		create Soldier number: 4;
+		create Zombie number: 5;
+		create Soldier number: NumberofSoldier;
 		create Guest number: 10;
 		create Technician number: 1;
 		create Hero number: 1;
-		create WatchTower number:1;
-		
+		//create WatchTower number:1;
 	}
 }
-
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-species Base_Person {
+species Base_Person skills:[moving]{
 	float speed <- 1.0;
-	rgb myColor <- #aqua;	
+	rgb myColor <- #aqua;
+	float sightRange <- 20.0;
+	bool isIdle <- true;
+	string textBubble <-"";
+	
 	aspect default{
 		draw sphere(1) at: {location.x,location.y,location.z+2} color:myColor;
 		draw pyramid(2) at: location color:myColor;		
-		
+		draw string(textBubble) at:location+{-3,0,4};
+	}
+	
+	reflex beIdle when: isIdle{
+		do wander amplitude: speed;
 	}
 }
-
 //Wants to eat people
-species Zombie parent: Base_Person skills:[moving] {
-	rgb myColor <-  #black;
-	reflex wander{
-		do wander amplitude:1.0;
-	}
-	
-	
-	}
+species Zombie parent: Base_Person {
+	rgb myColor <- #black;
+}
 
 //Avoids zombies
+//needs to eat
 //needs to eat (not people)
 species Guest parent: Base_Person {
 	rgb myColor <- #green;
-	
-}
 
+}
 // Follows technicians
 // Attacks zombies, for power damage at range range.
-species Soldier parent: Base_Person skills:[moving]{
+species Soldier parent: Base_Person{
 	float power <- rnd(0.8,5.0);
 	float range <- rnd(5.0,10.0);
+	int a;
 	//float accuracy <_ rnd(0.5,0.99) //Optional, this could affect the shooting at zombies. They could fail to shoot zombie.
 	rgb myColor <- #blue;
-	point m<-location;
-	
-	reflex moveAlongWithTechnician{
-		ask Technician{
-		point p<-self.location;
-		Soldier[0].location<-{p.x+2.5,p.y+2.5};
-		Soldier[1].location<-{p.x-2.5,p.y-2.5};
-		Soldier[2].location<-{p.x+2.5,p.y-2.5};
-		Soldier[3].location<-{p.x-2.5,p.y+2.5};
+	list ZombieKill<-zombiesWithinRange() update:zombiesWithinRange();
+	list<Zombie> zombiesWithinRange{
+		return Zombie where(each.location distance_to location <range);
+	}
+	reflex KillZombie when:!empty(zombiesWithinRange){
+		Base_Person target<-ZombieKill closest_to location;
+		if !empty(target){
+			do goto target:target;
+			if self.location=target.location{
+				write'Die Zombie Die';
+				ask target{
+				do die;
+			}
+			}else {
+				isIdle<-true;
+				write'Find the F****** Zombie';
+			}
+		}else{
+			isIdle<-true;
 		}
+		
+	}
 	}
 	
-	reflex shootAtZombie {
-		list<Zombie> zombiesWithinRange<- Zombie where(each.location distance_to location <range);
-		ask zombiesWithinRange {
-			do wander;
-		 	do die;
-		 }
-	}
-	reflex wander{
-		do wander speed:0.4 ;
-	}
-}
+
 
 //Stays a distance away from zombies based on "bravery"
 //Goal is to get to a radio tower, and repair it based on engineering_skill
 //Then get to bunker
-species Technician parent: Base_Person skills:[moving]{
+species Technician parent: Base_Person{
 	float bravery <- rnd(0.8,5.0); //How far away you stay from Zombies
 	float engineering_skill <- rnd(0.5,2.0); //How fast they repair the tower
+	float ProtectRange<-(5.0);
 	rgb myColor <- #yellow;
+	int RandomSoldierSelection<-rnd(0,NumberofSoldier-1);
+	reflex ProtectTechnicia{
+		ask (Soldier(RandomSoldierSelection)){
+			write self.name+' protecting the technician ';
+			do goto target:myself.location+rnd(3,7);
+		}
+		
 	
-	reflex wander {
-		//do wander amplitude:1.0;
-		do goto target:{50,50} speed:0.1 ;
 	}
+	reflex GotoTower{
+		do goto target:{50,50};
+	}
+	
 }
 
 //Acts like Guest
-//
+
 species Hero parent: Base_Person{
 	float bravery <- rnd(0.8,5.0); //How far away you stay from Zombies
 	float engineering_skill <- rnd(0.5,2.0); //How fast they repair the tower
 	rgb myColor <- #orange;
 }
-species WatchTower{
+/*species WatchTower {
 	aspect default{
 		draw cylinder(3.5,15) at:{50,50} color:#green;
 		draw cylinder(5,5) at:{50,50,15} color:#green;
-		//draw pyramid(10) at:{50,50,30} color:#green;
 	}
-}
-
+}*/
 experiment main type: gui{
 	output{
-		display my_display type: opengl background: #lightpink{
-			species Zombie ;
-			species Soldier;
-			species Guest ; 
-			species Technician ;
-			species Hero ;
-			species WatchTower;
-			
+		display map type: opengl background: #lightgreen{
+			species Zombie aspect: default;
+			species Soldier aspect: default;
+			//species Guest aspect: default; 
+			species Technician aspect:default;
+			//species Hero aspect:default;
+			//species WatchTower aspect:default;
 		}
 	}
 }
-
-
 /* Insert your model definition here */
