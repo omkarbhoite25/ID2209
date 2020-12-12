@@ -8,9 +8,43 @@
 model FinalAssignment
 global{
 	init{
-		create Zombie number: 20;
-		create Soldier number: 1;
-		create Guest number: 1;
+		//Testing left wall
+		create Zombie number: 1 with:(location:{10,50,0});
+		create Guest number: 1 with:(location:{2,50,0});
+		
+		//Testing right wall
+		create Zombie number: 1 with:(location:{90,50,0});
+		create Guest number: 1 with:(location:{99,50,0});
+		
+		//Testing top
+		create Zombie number: 1 with:(location:{50,10,0});
+		create Guest number: 1 with:(location:{50,1,0});
+		
+		//Testing bottom
+		create Zombie number: 1 with:(location:{50,90,0});
+		create Guest number: 1 with:(location:{50,99,0});
+		
+		//Testing lefttop
+		create Zombie number: 1 with:(location:{10,10,0});
+		create Guest number: 1 with:(location:{1,1,0});
+		
+		//Testing right top
+		create Zombie number: 1 with:(location:{90,10,0});
+		create Guest number: 1 with:(location:{99,1,0});
+		
+		//Testing leftbot
+		create Zombie number: 1 with:(location:{10,90,0});
+		create Guest number: 1 with:(location:{1,99,0});
+		
+		//Testing right bot
+		create Zombie number: 1 with:(location:{90,90,0});
+		create Guest number: 1 with:(location:{98,98,0});
+		
+		//Testing two zombols.
+		create Zombie number: 1 with:(location:{40,50,0});
+		create Zombie number: 1 with:(location:{60,50,0});
+		create Soldier number: 1 with:(location:{50,50,0});
+		//create Soldier number: 1;
 		//create Technician number: 1;
 		//create Hero number: 1;
 	}
@@ -93,7 +127,7 @@ species Zombie parent: Base_Person {
 	reflex killPerson when: !empty(eatableHumans) {
 		Human target <- eatableHumans closest_to location;
 		isIdle <-false; 
-		eatingCounter <-10;//Time to make eat and make new zombie
+		eatingCounter <-50;//Time to eat and then make new zombie
 		ask target{
 			do descriptiveDeath;
 		}
@@ -125,22 +159,37 @@ species Guest parent: Human {
 	
 	//Naively flees from zombie, by running in same direction.
 	reflex fleeFromZombies when: !empty(zombiesInSight){
-		textBubble <- "Fleeing";
+		
 		isIdle <-false;
-		Zombie enemy <- one_of(zombiesInSight);
-		float newHeading <- atan2(enemy.location.y-location.y, enemy.location.x-location.x);
+		//Zombie enemy <- zombiesInSight closest_to(location);
+		float newHeading <- 0.0;
+		
+		//Naive way of handling multiple zombies, where we look to find avoid every zombie equally. 
+		//Will run to opposite direction with 1 zombie, succesfully avoid 2 opposite each other, and attempt to handle more.
+		//Could be elaborated with weights depending on enemy distance to ourselves.
+		loop enemy over: zombiesInSight{
+			//Opposite of angle towards enemy
+			float oppositeOfEnemy <- 180+(atan2(enemy.location.y-location.y, enemy.location.x-location.x));
+			newHeading <- newHeading+oppositeOfEnemy;
+		}
+		
+		newHeading <- newHeading / length(zombiesInSight);
+		
+
 		//If we are at an edge, we should avoid moving into the wall..
-		//if location.y = 0{
-			
-		//} else if location.y {
-			
-		//}
-		//if location.x = 0{
-			
-		//} else if location.x {
-			
-		//}
-		do move heading:-newHeading ;		
+		int x <- 90;
+		if location.y <= 2 { //top wall
+			newHeading <- newHeading+x;
+		} else if location.y >= world.shape.height-2 {//bottom wall
+			newHeading <- newHeading+x;
+		}
+		if location.x <= 2{//left wall
+			newHeading <- newHeading+x;
+		} else if location.x >= world.shape.width-2{
+			newHeading <- newHeading+x;//right wall
+		}
+		textBubble <- ""+newHeading;
+		do move heading:newHeading ;		
 	}
 	
 	reflex becomeIdle when: empty(zombiesInSight){
@@ -158,11 +207,8 @@ species Soldier parent: Human{
 	rgb myColor <- #blue;
 	//Small timer to prevent soldier from firing every cycle. Reloading or aiming.
 	int reloadingCounter <- 0 update: reloadingCounter-1 min:0;
-	bool readyToFire <- true update: really();
-
-	bool really {
-		return reloadingCounter = 0;
-	}
+	bool readyToFire <- true update: reloadingCounter = 0;
+	
 	list<Zombie> zombiesWithinRange <- checkZombiesInRange() update:checkZombiesInRange();	
 	//Updates above list on every cycle.
 	list<Zombie> checkZombiesInRange {
@@ -182,17 +228,22 @@ species Soldier parent: Human{
 		} else {
 			write name+": Missed";
 		}
-		reloadingCounter <- 5;
+		reloadingCounter <- 8;
 	}
 	
 	//Optional reflex, for what to do when zombie is near but gun is not loaded
 	reflex sayOhShit when: (!empty(zombiesWithinRange) and !readyToFire) {
 		//Could flee from zombie, or stand ground while reloading.
+		textBubble <-"Reloading";
 	}
-	
+
 	//If you want Soldiers to hunt zomibes, change to zombiesInSight.
 	reflex becomeIdle when: empty(zombiesWithinRange){
-		textBubble <- "";
+		if(!readyToFire){
+			textBubble <- "reloading";
+		} else {
+			textBubble <- "";
+		}
 		isIdle <-true;
 	}
 }
