@@ -5,12 +5,9 @@
 * Tags: 
 */
 
-
 //Need 2 different places people can meet.
 //Show number of zombies over time
 //Vs peple and soldiers
-
-//
 
 model FinalAssignment
 global{
@@ -74,6 +71,56 @@ species Human parent: Base_Person {
 	}
 	list zombiesInSight -> { list<Zombie>(Zombie at_distance(sightRange))};
 	
+	list<FoodStall> stallsWithinSight -> {FoodStall where(each.location distance_to location < sightRange)};
+	FoodStall targetFoodStall <- nil;
+
+	//When people get hungry, they start looking for food
+	bool isHungry -> hunger > 299;
+	
+	//Everyone begins knowing about a random food stall.
+	list<FoodStall> knownFoodPlaces <- [one_of(FoodStall)];
+	
+	//When a guest becomes hungry, they pick a place to eat food.
+	reflex pickFoodStall when: (isHungry and targetFoodStall = nil){
+		targetFoodStall <- knownFoodPlaces closest_to location;
+	}
+	
+	//When a human is hungry, and safe from zombies, they head towards a food place	
+	reflex moveTowardsFood when: (empty(zombiesInSight) and isHungry){
+		textBubble <- "Hungry";
+		isIdle <-false;
+		do goto (targetFoodStall.location);
+	}
+	
+	//While at food stall, eat food until no longer hungry
+	reflex eatFood when:(targetFoodStall != nil and hunger !=0 and location distance_to targetFoodStall < 2) {
+		hunger <- hunger - 10;
+		textBubble <- "Eating";
+		isIdle <- false;
+	}
+	
+	//Remembers new food stalls when they are in sight.
+	reflex learnNewFoodPlace when: !empty(stallsWithinSight){
+		loop newFoodPlace over: (stallsWithinSight where(!(knownFoodPlaces contains(each)))){
+			knownFoodPlaces <- knownFoodPlaces + newFoodPlace;
+		}
+	}
+	
+	//Resets target food stall when not hungry, or run away from zombies 
+	reflex resetTargetFoodStall when:(targetFoodStall != nil and (hunger=0 or !empty(zombiesInSight))){
+		targetFoodStall <-  nil;
+	}
+	
+	//When the guest becomes too hungry, they die of starvation.
+	reflex starveToDeath when: hunger = starvationLevel {
+		write name+": Died of starvation";
+		do die;
+		if(flip(0.10)){create Zombie number: 1 with:(location:location);}
+	}
+	
+	//Level at which this person will starve to death
+	int starvationLevel <- 500;
+	int hunger <- rnd(0,100) update: hunger + rnd(0,1) max: starvationLevel min:0;
 	action fleeFromZombies{
 		isIdle <-false;
 		textBubble <- "Fleeing";
@@ -167,28 +214,11 @@ species Zombie parent: Base_Person {
 //Avoids zombies
 //needs to eat (not people)
 species Guest parent: Human {
-	FoodStall targetFoodStall <- nil;
 	rgb myColor <- #green;
-	
-	list<FoodStall> stallsWithinSight -> {FoodStall where(each.location distance_to location < sightRange)};
-	
-	//Hunger increases at a slow pace. 
-	int starvationLevel <- 500;
-	int hunger <- rnd(0,100) update: hunger + rnd(0,1) max: starvationLevel min:0;
-	//When people get hungry, they start looking 
-	bool isHungry -> hunger > 299;
-	
-	//Everyone begins knowing about a random food stall.
-	list<FoodStall> knownFoodPlaces <- [one_of(FoodStall)];
 	
 	//Flee from zombies, by running in opposite direction..
 	reflex avoidZombies when: !empty(zombiesInSight){
 		do fleeFromZombies;		
-	}
-	
-	//When a guest becomes hungry, they pick a place to eat food.
-	reflex pickFoodStall when: (isHungry and targetFoodStall = nil){
-		targetFoodStall <- knownFoodPlaces closest_to location;
 	}
 	
 	//When not hungry and safe.
@@ -197,40 +227,6 @@ species Guest parent: Human {
 		isIdle<-true;
 	}
 	
-	//When a guest is hungry, and not ffrom zombies, they head towards the food place	
-	reflex moveTowardsFood when: (empty(zombiesInSight) and isHungry){
-		textBubble <- "Hungry";
-		isIdle <-false;
-		do goto (targetFoodStall.location);
-	}
-	
-	//Remembers new food stalls when they are in sight.
-	reflex learnNewFoodPlace when: !empty(stallsWithinSight){
-		loop newFoodPlace over: (stallsWithinSight where(!(knownFoodPlaces contains(each)))){
-			knownFoodPlaces <- knownFoodPlaces + newFoodPlace;
-		}
-	}
-	
-	//While at food stall, eat food until no longer hungry
-	reflex eatFood when:(targetFoodStall != nil and hunger !=0 and location distance_to targetFoodStall < 2) {
-		hunger <- hunger - 10;
-		textBubble <- "Eating";
-		isIdle <- false;
-	}
-	
-	//Resets target food stall when not hungry, or run away from zombies 
-	reflex resetTargetFoodStall when:(targetFoodStall != nil and (hunger=0 or !empty(zombiesInSight))){
-		targetFoodStall <-  nil;
-	}
-	
-	//When the guest becomes too hungry, they die of starvation.
-	reflex starveToDeath when: hunger = starvationLevel {
-		write name+": Died of starvation";
-		do die;
-		if(flip(0.10)){create Zombie number: 1 with:(location:location);}
-	}
-	
-	//Head towards stores
 }
 
 // Follows technicians.
