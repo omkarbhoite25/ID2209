@@ -90,16 +90,16 @@ species Technician parent: Base_Person{
 	rgb myColor <- #yellow;
 	list nearbySoldiers -> {Soldier where(each.location distance_to location<sightRange)};
 	
-	list<Soldier> SearchingSoldier{
-		return ;
-	}
-	
 	reflex askSoldierToAccompany when: !empty(nearbySoldiers){
 		ask nearbySoldiers closest_to location{
 			write 'Dying :'+name; 
 			do die;
 		}
-		
+		isIdle<- false;
+	}
+	
+	reflex becomeIdle when: empty(nearbySoldiers){
+		isIdle <- true;
 	}
 	/*reflex ProtectTechnicia{
 		ask (Soldier(RandomSoldierSelection)){
