@@ -58,7 +58,7 @@ species Soldier parent: Base_Person{
 	list<Zombie> zombiesWithinRange{
 		return Zombie where(each.location distance_to location <range);
 	}
-	reflex KillZombie when:!empty(zombiesWithinRange){
+	/*	reflex KillZombie when:!empty(zombiesWithinRange){
 		Base_Person target<-ZombieKill closest_to location;
 		if !empty(target){
 			do goto target:target;
@@ -75,7 +75,7 @@ species Soldier parent: Base_Person{
 			isIdle<-true;
 		}
 		
-	}
+	}*/
 	}
 	
 
@@ -87,9 +87,26 @@ species Technician parent: Base_Person{
 	float bravery <- rnd(0.8,5.0); //How far away you stay from Zombies
 	float engineering_skill <- rnd(0.5,2.0); //How fast they repair the tower
 	float ProtectRange<-(5.0);
+	float soldierRange<-10.0;
 	rgb myColor <- #yellow;
 	int RandomSoldierSelection<-rnd(0,NumberofSoldier-1);
-	reflex ProtectTechnicia{
+	list SoldierWithinRange <- SearchingSoldier() update:SearchingSoldier();
+	
+	list<Soldier> SearchingSoldier{
+		return Soldier where(each.location distance_to location<soldierRange);
+	}
+	
+	reflex SearchSoldier{
+		do wander;
+		if !empty(SoldierWithinRange){
+			ask SoldierWithinRange closest_to location{
+				write 'Dying :'+name; 
+				do die;
+			}
+		}
+		
+	}
+	/*reflex ProtectTechnicia{
 		ask (Soldier(RandomSoldierSelection)){
 			write self.name+' protecting the technician ';
 			do goto target:myself.location+rnd(3,7);
@@ -99,7 +116,7 @@ species Technician parent: Base_Person{
 	}
 	reflex GotoTower{
 		do goto target:{50,50};
-	}
+	}*/
 	
 }
 
