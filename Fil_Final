@@ -16,18 +16,30 @@ model FinalAssignment
 global{
 	geometry shape <- square(200#m);
 	int zombies -> {length(Zombie)};
-    int humans -> {length(Guest)+length(Soldier)};
+    int humans -> {length(agents where(each is Human))};
 	init{
-//		create FoodStall number:3;
-//		create Zombie number: 5;
-//		create Guest number: 40;
-//		create Soldier number: 1;
-		//create Technician number: 1;
+		int scenario <- 0 ;
+		if scenario = 0{
+			create FoodStall number:3;
+			create Zombie number: 5;
+			create Guest number: 40;
+			create Soldier number: 1;
+		} else if scenario = 1 {
+			//Testing a single soldier shooting & fleeing.
+			create Zombie with: (location:{50,60,0});
+			create Soldier with: (location:{50,50,0});
+			create Zombie with: (location:{50,40,0});
+		} else if scenario = 2 {
+			//Testing Technician with Protecting Soldier, vs Zombies.
+			//Soldier should not flee?
+			create Zombie with: (location:{50,65,0});
+			create Soldier with: (location:{50,50,0});
+			create Technician with: (location:{50,55,0});
+			create Zombie with: (location:{50,35,0});
+		}
 		//create Hero number: 1;
 		
-		create Zombie with: (location:{50,60,0});
-		create Soldier with: (location:{50,50,0});
-		create Zombie with: (location:{50,40,0});
+
 	}
 }
 
@@ -221,8 +233,9 @@ species Guest parent: Human {
 	//Head towards stores
 }
 
-// Follows technicians
-// Attacks zombies, for power damage at range range.
+// Follows technicians.
+// Attacks zombies.
+// Shoots at people near the radio tower.
 species Soldier parent: Human{
 	//Range of firing gun
 	float range <- rnd(5.0,10.0);
@@ -274,10 +287,6 @@ species Soldier parent: Human{
 //Stays a distance away from zombies based on "bravery"
 //Goal is to get to a radio tower, and repair it based on engineering_skill
 //Then get to bunker
-
-//Stays a distance away from zombies based on "bravery"
-//Goal is to get to a radio tower, and repair it based on engineering_skill
-//Then get to bunker
 species Technician parent: Base_Person{
 	float bravery <- rnd(0.8,5.0); //How far away you stay from Zombies
 	float engineering_skill <- rnd(0.5,2.0); //How fast they repair the tower
@@ -296,18 +305,6 @@ species Technician parent: Base_Person{
 	reflex becomeIdle when: empty(nearbySoldiers){
 		isIdle <- true;
 	}
-	/*reflex ProtectTechnicia{
-		ask (Soldier(RandomSoldierSelection)){
-			write self.name+' protecting the technician ';
-			do goto target:myself.location+rnd(3,7);
-		}
-		
-	
-	}
-	reflex GotoTower{
-		do goto target:{50,50};
-	}*/
-	
 }
 
 //Acts like Guest
@@ -323,6 +320,24 @@ species FoodStall {
 	int foodStorage <- 10000 min:0;
 	aspect default {
 		draw square(5) at: location color: #green;
+	}
+}
+
+species Bunker {
+	
+}
+
+//Needs to be fixed/configured by a technician, so that it can broadcast the location of a safe space to everyone.
+//Technicians know the location of the RadioMast 
+species RadioMast skills:[fipa]{
+	//Progress to broadcast
+	float progress <- 0.0 max:100.0;
+	//Only 1 broadcast will be sent out.
+	bool broadCastSent <- false;
+	
+	//Send a message to all humans about the location of the safe space
+	reflex sendMessage when: (progress = 0 and !broadCastSent){
+		
 	}
 }
 
