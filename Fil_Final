@@ -15,7 +15,7 @@ global{
 	int zombies -> {length(Zombie)};
     int humans -> {length(agents where(each is Human))};
 	init{
-		int scenario <- 0 ;
+		int scenario <- 3 ;
 		if scenario = 0{
 			create FoodStall number:3;
 			create Zombie number: 5;
@@ -33,10 +33,14 @@ global{
 			create Soldier with: (location:{50,50,0});
 			create Technician with: (location:{50,55,0});
 			create Zombie with: (location:{50,35,0});
+		} else if scenario = 3{
+			create FoodStall number:3;
+			create Zombie number: 5;
+			create Guest number: 40;
+			create Soldier number: 1;
+			create Bunker number:1;
+			create RadioMast number:1;
 		}
-		//create Hero number: 1;
-		
-
 	}
 }
 
@@ -62,7 +66,8 @@ species Base_Person skills:[moving]{
 }
 
 //Used to categorize all humans, as opposed to zombies.
-species Human parent: Base_Person {
+species Human parent: Base_Person skills:[fipa]{
+	Bunker safetyBunker <- nil;
 	list<string> funnyDeaths <- ["Blergh", "Oh no!", "Argh!", "Cruel world!", "Damn!", "I died!"];
 	
 	action descriptiveDeath{
@@ -86,10 +91,16 @@ species Human parent: Base_Person {
 	}
 	
 	//When a human is hungry, and safe from zombies, they head towards a food place	
-	reflex moveTowardsFood when: (empty(zombiesInSight) and isHungry){
+	reflex moveTowardsFood when: (empty(zombiesInSight) and isHungry and safetyBunker  = nil){
 		textBubble <- "Hungry";
 		isIdle <-false;
 		do goto (targetFoodStall.location);
+	}
+	
+	reflex headTowardsBunker when: (empty(zombiesInSight) and safetyBunker  != nil){
+		textBubble <- "Salvation!";
+		isIdle <-false;
+		do goto(safetyBunker );
 	}
 	
 	//While at food stall, eat food until no longer hungry
@@ -122,6 +133,9 @@ species Human parent: Base_Person {
 	int starvationLevel <- 500;
 	int hunger <- rnd(0,100) update: hunger + rnd(0,1) max: starvationLevel min:0;
 	action fleeFromZombies{
+		if(agents_inside(safetyBunker) contains (self)){
+			return;
+		}
 		isIdle <-false;
 		textBubble <- "Fleeing";
 		//Zombie enemy <- zombiesInSight closest_to(location);
@@ -151,6 +165,11 @@ species Human parent: Base_Person {
 			newHeading <- newHeading+x;//right wall
 		}
 		do move heading:newHeading ;
+	}
+
+	reflex learnOfBunker when:(!empty(informs)){
+		message inform <- informs at 0;
+		safetyBunker <- list(inform.contents)[0];
 	}
 }
 
@@ -233,6 +252,7 @@ species Guest parent: Human {
 // Attacks zombies.
 // Shoots at people near the radio tower.
 species Soldier parent: Human{
+	
 	//Range of firing gun
 	float range <- rnd(5.0,10.0);
 	//Percent chance of hitting target
@@ -303,38 +323,54 @@ species Technician parent: Base_Person{
 	}
 }
 
-//Acts like Guest
-//
-species Hero parent: Human{
-	float bravery <- rnd(0.8,5.0); //How far away you stay from Zombies
-	float engineering_skill <- rnd(0.5,2.0); //How fast they repair the tower
-	rgb myColor <- #orange;
-}
 
 //A place where people can get food.
 species FoodStall {
 	int foodStorage <- 10000 min:0;
+	float rowdiness <- 0.0;
+	
 	aspect default {
 		draw square(5) at: location color: #green;
 	}
 }
 
 species Bunker {
+	list<Human> humansInBunker -> {list<Human>(agents_inside(self) where(each is Human))};
 	
+	//Bunker has enough food to last a long, long time.
+	reflex feedPeople when:(!empty(humansInBunker)){
+		loop human over: humansInBunker{
+			ask human {
+				hunger <- 0;
+			}
+		}
+	}
+	
+	aspect default {
+		draw circle(5) at: location color: #gold;
+	}
 }
 
 //Needs to be fixed/configured by a technician, so that it can broadcast the location of a safe space to everyone.
 //Technicians know the location of the RadioMast 
 species RadioMast skills:[fipa]{
 	//Progress to broadcast
-	float progress <- 0.0 max:100.0;
+	float progress <- 0.0 max:100.0 update:progress+1;
 	//Only 1 broadcast will be sent out.
 	bool broadCastSent <- false;
+	Bunker safeSpace;
+	
+	init {
+		safeSpace <- one_of(Bunker);
+	}
 	
 	//Send a message to all humans about the location of the safe space
-	reflex sendMessage when: (progress = 0 and !broadCastSent){
-		
+	reflex sendMessage when: (progress = 100 and !broadCastSent){
+		write "Sending broadcast. Salvation is at hand!";
+		do start_conversation to: list(agents where(each is Human)) protocol: 'no-protocol' performative: 'inform' contents: [safeSpace];
+		broadCastSent <- true;
 	}
+	
 }
 
 experiment main type: gui{
@@ -344,9 +380,9 @@ experiment main type: gui{
 			species Soldier aspect: default;
 			species Guest aspect: default; 
 			species Technician aspect:default;
-			species Hero aspect:default;
 			species FoodStall aspect: default;
-			
+			species Bunker aspect:default;
+			species RadioMast;
 		}
 		display Population_Information {
 			chart "Population" type: series size: {1,0.5} position: {0, 0} {
