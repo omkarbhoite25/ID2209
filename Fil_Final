@@ -14,54 +14,28 @@
 
 model FinalAssignment
 global{
+	geometry shape <- square(200#m);
 	int zombies -> {length(Zombie)};
     int humans -> {length(Guest)+length(Soldier)};
 	init{
-		//Testing left wall
-		create Zombie number: 1 with:(location:{10,50,0});
-		create Guest number: 1 with:(location:{2,50,0});
-		
-		//Testing right wall
-		create Zombie number: 1 with:(location:{90,50,0});
-		create Guest number: 1 with:(location:{99,50,0});
-		
-		//Testing top
-		create Zombie number: 1 with:(location:{50,10,0});
-		create Guest number: 1 with:(location:{50,1,0});
-		
-		//Testing bottom
-		create Zombie number: 1 with:(location:{50,90,0});
-		create Guest number: 1 with:(location:{50,99,0});
-		
-		//Testing lefttop
-		create Zombie number: 1 with:(location:{10,10,0});
-		create Guest number: 1 with:(location:{1,1,0});
-		
-		//Testing right top
-		create Zombie number: 1 with:(location:{90,10,0});
-		create Guest number: 1 with:(location:{99,1,0});
-		
-		//Testing leftbot
-		create Zombie number: 1 with:(location:{10,90,0});
-		create Guest number: 1 with:(location:{1,99,0});
-		
-		//Testing right bot
-		create Zombie number: 1 with:(location:{90,90,0});
-		create Guest number: 1 with:(location:{98,98,0});
-		
-		//Testing two zombols.
-		create Zombie number: 1 with:(location:{40,50,0});
-		create Zombie number: 1 with:(location:{60,50,0});
-		create Soldier number: 1 with:(location:{50,50,0});
-		//create Soldier number: 1;
+//		create FoodStall number:3;
+//		create Zombie number: 5;
+//		create Guest number: 40;
+//		create Soldier number: 1;
 		//create Technician number: 1;
 		//create Hero number: 1;
+		
+		create Zombie with: (location:{50,60,0});
+		create Soldier with: (location:{50,50,0});
+		create Zombie with: (location:{50,40,0});
 	}
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 species Base_Person skills:[moving]{
-	float speed <- 1.0;
+	init{
+		speed <- 1.0;	
+	}
 	rgb myColor <- #aqua;
 	float sightRange <- 20.0;
 	bool isIdle <- true;
@@ -86,14 +60,47 @@ species Human parent: Base_Person {
 		write name+":"+one_of(funnyDeaths)+"X(";
 		do die;
 	}
-	list zombiesInSight -> { list<Zombie>(agents_at_distance(sightRange) where((each is Zombie)))};
+	list zombiesInSight -> { list<Zombie>(Zombie at_distance(sightRange))};
+	
+	action fleeFromZombies{
+		isIdle <-false;
+		textBubble <- "Fleeing";
+		//Zombie enemy <- zombiesInSight closest_to(location);
+		float newHeading <- 0.0;
+		
+		//Naive way of handling multiple zombies, where we look to find avoid every zombie equally. 
+		//Will run to opposite direction with 1 zombie, succesfully avoid 2 opposite each other, and attempt to handle more.
+		//Could be elaborated with weights depending on enemy distance to ourselves.
+		loop enemy over: zombiesInSight{
+			//Opposite of angle towards enemy
+			float oppositeOfEnemy <- 180+(atan2(enemy.location.y-location.y, enemy.location.x-location.x));
+			newHeading <- newHeading+oppositeOfEnemy;
+		}
+		//Take the mean of all angles that avoid zombies. Simplistic, but works for a lot of cases.
+		newHeading <- newHeading / length(zombiesInSight);
+		
+		//If we are at a world edge, we should avoid moving into the wall..
+		int x <- 90;
+		if location.y <= 2 { //top wall
+			newHeading <- newHeading+x;
+		} else if location.y >= world.shape.height-2 {//bottom wall
+			newHeading <- newHeading+x;
+		}
+		if location.x <= 2{//left wall
+			newHeading <- newHeading+x;
+		} else if location.x >= world.shape.width-2{
+			newHeading <- newHeading+x;//right wall
+		}
+		do move heading:newHeading ;
+	}
 }
 
 //Wants to eat people
 species Zombie parent: Base_Person {
 	rgb myColor <- #black;
 	init{
-		speed <- rnd(0.6,0.8);
+		sightRange <- rnd(15.0,20.0);
+		speed <- rnd(0.8,0.9);
 		write "Brains!";
 	}
 	
@@ -104,11 +111,10 @@ species Zombie parent: Base_Person {
 	float killRange <- 2.0;
 	
 	//List of nearby Humans
-	list<Human>  humansInSight -> {list<Human>(agents_at_distance(sightRange) where(!(each is Zombie)))};
+	list<Human>  humansInSight -> {list<Human>(agents_at_distance(sightRange) where(each is Human))};
 	
 	//Humans that we can eat
-	list<Human>  eatableHumans -> {list<Human>(agents_at_distance(killRange) where(!(each is Zombie)))};
-	
+	list<Human>  eatableHumans -> {list<Human>(agents_at_distance(killRange) where(each is Human))};
 	
 	//Hunt nearest person in sight
 	reflex huntPeople when: !empty(humansInSight) and eatingCounter = 0{
@@ -149,46 +155,69 @@ species Zombie parent: Base_Person {
 //Avoids zombies
 //needs to eat (not people)
 species Guest parent: Human {
+	FoodStall targetFoodStall <- nil;
 	rgb myColor <- #green;
+	
+	list<FoodStall> stallsWithinSight -> {FoodStall where(each.location distance_to location < sightRange)};
+	
+	//Hunger increases at a slow pace. 
+	int starvationLevel <- 500;
+	int hunger <- rnd(0,100) update: hunger + rnd(0,1) max: starvationLevel min:0;
+	//When people get hungry, they start looking 
+	bool isHungry -> hunger > 299;
+	
+	//Everyone begins knowing about a random food stall.
+	list<FoodStall> knownFoodPlaces <- [one_of(FoodStall)];
+	
 	//Flee from zombies, by running in opposite direction..
-	reflex fleeFromZombies when: !empty(zombiesInSight){
-		
-		isIdle <-false;
-		//Zombie enemy <- zombiesInSight closest_to(location);
-		float newHeading <- 0.0;
-		
-		//Naive way of handling multiple zombies, where we look to find avoid every zombie equally. 
-		//Will run to opposite direction with 1 zombie, succesfully avoid 2 opposite each other, and attempt to handle more.
-		//Could be elaborated with weights depending on enemy distance to ourselves.
-		loop enemy over: zombiesInSight{
-			//Opposite of angle towards enemy
-			float oppositeOfEnemy <- 180+(atan2(enemy.location.y-location.y, enemy.location.x-location.x));
-			newHeading <- newHeading+oppositeOfEnemy;
-		}
-		
-		newHeading <- newHeading / length(zombiesInSight);
-		
-
-		//If we are at an edge, we should avoid moving into the wall..
-		int x <- 90;
-		if location.y <= 2 { //top wall
-			newHeading <- newHeading+x;
-		} else if location.y >= world.shape.height-2 {//bottom wall
-			newHeading <- newHeading+x;
-		}
-		if location.x <= 2{//left wall
-			newHeading <- newHeading+x;
-		} else if location.x >= world.shape.width-2{
-			newHeading <- newHeading+x;//right wall
-		}
-		textBubble <- ""+newHeading;
-		do move heading:newHeading ;		
+	reflex avoidZombies when: !empty(zombiesInSight){
+		do fleeFromZombies;		
 	}
 	
-	reflex becomeIdle when: empty(zombiesInSight){
+	//When a guest becomes hungry, they pick a place to eat food.
+	reflex pickFoodStall when: (isHungry and targetFoodStall = nil){
+		targetFoodStall <- knownFoodPlaces closest_to location;
+	}
+	
+	//When not hungry and safe.
+	reflex becomeIdle when: (empty(zombiesInSight) and !isHungry){
 		textBubble <-"";
 		isIdle<-true;
 	}
+	
+	//When a guest is hungry, and not ffrom zombies, they head towards the food place	
+	reflex moveTowardsFood when: (empty(zombiesInSight) and isHungry){
+		textBubble <- "Hungry";
+		isIdle <-false;
+		do goto (targetFoodStall.location);
+	}
+	
+	//Remembers new food stalls when they are in sight.
+	reflex learnNewFoodPlace when: !empty(stallsWithinSight){
+		loop newFoodPlace over: (stallsWithinSight where(!(knownFoodPlaces contains(each)))){
+			knownFoodPlaces <- knownFoodPlaces + newFoodPlace;
+		}
+	}
+	
+	//While at food stall, eat food until no longer hungry
+	reflex eatFood when:(targetFoodStall != nil and hunger !=0 and location distance_to targetFoodStall < 2) {
+		hunger <- hunger - 10;
+		textBubble <- "Eating";
+		isIdle <- false;
+	}
+	
+	//Resets target food stall when not hungry, or run away from zombies 
+	reflex resetTargetFoodStall when:(targetFoodStall != nil and (hunger=0 or !empty(zombiesInSight))){
+		targetFoodStall <-  nil;
+	}
+	
+	//When the guest becomes too hungry, they die of starvation.
+	reflex starveToDeath when: hunger = starvationLevel {
+		write name+": Died of starvation";
+		do die;
+		if(flip(0.10)){create Zombie number: 1 with:(location:location);}
+	}
+	
 	//Head towards stores
 }
 
@@ -214,7 +243,6 @@ species Soldier parent: Human{
 	reflex shootAtZombie when: (!empty(zombiesWithinRange) and readyToFire) {
 		isIdle <-false;
 		textBubble <- "Shooting";
-		write "Time to shoot";
 		if(flip(accuracy)){
 			write name+": Hit";
 			ask zombiesWithinRange closest_to location{
@@ -227,13 +255,13 @@ species Soldier parent: Human{
 	}
 	
 	//Optional reflex, for what to do when zombie is near but gun is not loaded
-	reflex sayOhShit when: (!empty(zombiesWithinRange) and !readyToFire) {
+	reflex fleeWhileReloading when: (!empty(zombiesInSight) and !readyToFire) {
 		//Could flee from zombie, or stand ground while reloading.
-		textBubble <-"Reloading";
+		do fleeFromZombies;	
 	}
 
 	//If you want Soldiers to hunt zomibes, change to zombiesInSight.
-	reflex becomeIdle when: empty(zombiesWithinRange){
+	reflex becomeIdle when: empty(zombiesInSight){
 		if(!readyToFire){
 			textBubble <- "reloading";
 		} else {
@@ -246,10 +274,40 @@ species Soldier parent: Human{
 //Stays a distance away from zombies based on "bravery"
 //Goal is to get to a radio tower, and repair it based on engineering_skill
 //Then get to bunker
-species Technician parent: Human{
+
+//Stays a distance away from zombies based on "bravery"
+//Goal is to get to a radio tower, and repair it based on engineering_skill
+//Then get to bunker
+species Technician parent: Base_Person{
 	float bravery <- rnd(0.8,5.0); //How far away you stay from Zombies
 	float engineering_skill <- rnd(0.5,2.0); //How fast they repair the tower
+	float ProtectRange<-(5.0);
 	rgb myColor <- #yellow;
+	list<Soldier> nearbySoldiers -> {Soldier where(each.location distance_to location<sightRange)};
+	
+	reflex askSoldierToAccompany when: !empty(nearbySoldiers){
+		ask nearbySoldiers closest_to location{
+			write 'Dying :'+name; 
+			do die;
+		}
+		isIdle<- false;
+	}
+	
+	reflex becomeIdle when: empty(nearbySoldiers){
+		isIdle <- true;
+	}
+	/*reflex ProtectTechnicia{
+		ask (Soldier(RandomSoldierSelection)){
+			write self.name+' protecting the technician ';
+			do goto target:myself.location+rnd(3,7);
+		}
+		
+	
+	}
+	reflex GotoTower{
+		do goto target:{50,50};
+	}*/
+	
 }
 
 //Acts like Guest
@@ -260,6 +318,14 @@ species Hero parent: Human{
 	rgb myColor <- #orange;
 }
 
+//A place where people can get food.
+species FoodStall {
+	int foodStorage <- 10000 min:0;
+	aspect default {
+		draw square(5) at: location color: #green;
+	}
+}
+
 experiment main type: gui{
 	output{
 		display map type: opengl{
@@ -268,6 +334,7 @@ experiment main type: gui{
 			species Guest aspect: default; 
 			species Technician aspect:default;
 			species Hero aspect:default;
+			species FoodStall aspect: default;
 			
 		}
 		display Population_Information {
