@@ -87,22 +87,17 @@ species Technician parent: Base_Person{
 	float bravery <- rnd(0.8,5.0); //How far away you stay from Zombies
 	float engineering_skill <- rnd(0.5,2.0); //How fast they repair the tower
 	float ProtectRange<-(5.0);
-	float soldierRange<-10.0;
 	rgb myColor <- #yellow;
-	int RandomSoldierSelection<-rnd(0,NumberofSoldier-1);
-	list SoldierWithinRange <- SearchingSoldier() update:SearchingSoldier();
+	list nearbySoldiers -> {Soldier where(each.location distance_to location<sightRange)};
 	
 	list<Soldier> SearchingSoldier{
-		return Soldier where(each.location distance_to location<soldierRange);
+		return ;
 	}
 	
-	reflex SearchSoldier{
-		do wander;
-		if !empty(SoldierWithinRange){
-			ask SoldierWithinRange closest_to location{
-				write 'Dying :'+name; 
-				do die;
-			}
+	reflex askSoldierToAccompany when: !empty(nearbySoldiers){
+		ask nearbySoldiers closest_to location{
+			write 'Dying :'+name; 
+			do die;
 		}
 		
 	}
