@@ -14,8 +14,8 @@
 
 model FinalAssignment
 global{
-	int nb_preys -> {length(Zombie)};
-    int nb_predators -> {length(Guest)+length(Soldier)};
+	int zombies -> {length(Zombie)};
+    int humans -> {length(Guest)+length(Soldier)};
 	init{
 		//Testing left wall
 		create Zombie number: 1 with:(location:{10,50,0});
@@ -135,7 +135,7 @@ species Zombie parent: Base_Person {
 		textBubble <- "Eating";
 		eatingCounter<- eatingCounter -1;
 		if(eatingCounter = 0){
-			create Zombie with:(location:location+{0,0,0}, eatingCounter:5);
+			create Zombie with:(location:location+{0,0,0});
 		}
 	}
 	
@@ -271,9 +271,9 @@ experiment main type: gui{
 			
 		}
 		display Population_Information {
-			chart "Species evolution" type: series size: {1,0.5} position: {0, 0} {
-   				 data "number_of_preys" value: nb_preys color: #blue ;
-				 data "number_of_predator" value: nb_predators color: #red ;
+			chart "Population" type: series size: {1,0.5} position: {0, 0} {
+   				 data "Zombies" value: zombies color: #black ;
+				 data "Humans" value: humans color: #green ;
     		}
 		}
 	}
