@@ -15,7 +15,7 @@ global{
 	int zombies -> {length(Zombie)};
     int humans -> {length(agents where(each is Human))};
 	init{
-		int scenario <- 3 ;
+		int scenario <- 4 ;
 		if scenario = 0{
 			create FoodStall number:3;
 			create Zombie number: 5;
@@ -40,6 +40,13 @@ global{
 			create Soldier number: 1;
 			create Bunker number:1;
 			create RadioMast number:1;
+		} else if scenario = 4{
+			//Test having people inside the bunker
+			create Bunker with: (location:{100,100,0}, isActive:true);
+			//Zombie should die on tick 1
+			create Zombie number: 1 with: (location:{90,90,0});
+			//Human should be fed
+			create Guest number: 1 with: (location:{110,110,0}, hunger:498, safetyBunker:one_of(Bunker));
 		}
 	}
 }
@@ -97,10 +104,16 @@ species Human parent: Base_Person skills:[fipa]{
 		do goto (targetFoodStall.location);
 	}
 	
-	reflex headTowardsBunker when: (empty(zombiesInSight) and safetyBunker  != nil){
-		textBubble <- "Salvation!";
+	//Head Towards bunker until you are inside.
+	reflex headTowardsBunker when: (empty(zombiesInSight) and safetyBunker != nil and !(agents_inside(safetyBunker) contains(self))){
 		isIdle <-false;
-		do goto(safetyBunker );
+		do goto(safetyBunker);
+	}
+	
+	//Wander around in bunker.
+	reflex wanderInBunker when:(safetyBunker != nil and agents_inside(safetyBunker) contains(self)) {
+		textBubble <-"Safe";
+		do wander bounds:safetyBunker.shape amplitude:90.0;
 	}
 	
 	//While at food stall, eat food until no longer hungry
@@ -252,7 +265,6 @@ species Guest parent: Human {
 // Attacks zombies.
 // Shoots at people near the radio tower.
 species Soldier parent: Human{
-	
 	//Range of firing gun
 	float range <- rnd(5.0,10.0);
 	//Percent chance of hitting target
@@ -323,7 +335,6 @@ species Technician parent: Base_Person{
 	}
 }
 
-
 //A place where people can get food.
 species FoodStall {
 	int foodStorage <- 10000 min:0;
@@ -334,20 +345,42 @@ species FoodStall {
 	}
 }
 
-species Bunker {
-	list<Human> humansInBunker -> {list<Human>(agents_inside(self) where(each is Human))};
+//Saves people and kills Zombies
+species Bunker skills:[fipa]{
+	int size <- 20;
+	init {
+		shape <- circle(size);
+	}
+	list<Human> humansInBunker -> {list<Human>(agents_inside(shape) where(each is Human))};
+	list<Zombie> zombiesInBunker -> {list<Zombie>(agents_inside(shape) where(each is Zombie))};
+	bool isActive <- false;
 	
-	//Bunker has enough food to last a long, long time.
-	reflex feedPeople when:(!empty(humansInBunker)){
+	//Bunker has enough food to last a long, long, long time.
+	reflex feedPeople when:(!empty(humansInBunker) and isActive){
 		loop human over: humansInBunker{
 			ask human {
 				hunger <- 0;
 			}
 		}
 	}
+	//Automated Turrets kill all zombies inside the bunker
+	reflex killPeople when:(!empty(zombiesInBunker) and isActive){
+		loop zombie over: zombiesInBunker{
+			ask zombie {
+				do die;
+			}
+		}
+	}
+	
+	reflex activate when:(!empty(informs)){
+		string trash <- (informs at 0).contents;//Trash message
+		isActive <- true;
+	}
 	
 	aspect default {
-		draw circle(5) at: location color: #gold;
+		if(isActive){
+			draw shape at: location color: #gold;	
+		}
 	}
 }
 
@@ -367,6 +400,7 @@ species RadioMast skills:[fipa]{
 	//Send a message to all humans about the location of the safe space
 	reflex sendMessage when: (progress = 100 and !broadCastSent){
 		write "Sending broadcast. Salvation is at hand!";
+		do start_conversation to: list(safeSpace) protocol: 'no-protocol' performative: 'inform' contents: [];
 		do start_conversation to: list(agents where(each is Human)) protocol: 'no-protocol' performative: 'inform' contents: [safeSpace];
 		broadCastSent <- true;
 	}
@@ -375,6 +409,7 @@ species RadioMast skills:[fipa]{
 
 experiment main type: gui{
 	output{
+
 		display map type: opengl{
 			species Zombie aspect: default;
 			species Soldier aspect: default;
@@ -384,12 +419,12 @@ experiment main type: gui{
 			species Bunker aspect:default;
 			species RadioMast;
 		}
-		display Population_Information {
-			chart "Population" type: series size: {1,0.5} position: {0, 0} {
-   				 data "Zombies" value: zombies color: #black ;
-				 data "Humans" value: humans color: #green ;
-    		}
-		}
+//		display Population_Information {
+//			chart "Population" type: series size: {1,0.5} position: {0, 0} {
+//  				 data "Zombies" value: zombies color: #black ;
+//				 data "Humans" value: humans color: #green ;
+//   		}
+//		}
 	}
 }
 
