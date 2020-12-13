@@ -48,36 +48,55 @@ species Guest parent: Base_Person {
 }
 // Follows technicians
 // Attacks zombies, for power damage at range range.
-species Soldier parent: Base_Person{
-	float power <- rnd(0.8,5.0);
+species Soldier parent: Human{
+	//Range of firing gun
 	float range <- rnd(5.0,10.0);
-	int a;
-	//float accuracy <_ rnd(0.5,0.99) //Optional, this could affect the shooting at zombies. They could fail to shoot zombie.
+	//Percent chance of hitting target
+	float accuracy <- rnd(0.5,0.85);
 	rgb myColor <- #blue;
-	list ZombieKill<-zombiesWithinRange() update:zombiesWithinRange();
-	list<Zombie> zombiesWithinRange{
-		return Zombie where(each.location distance_to location <range);
-	}
-	/*	reflex KillZombie when:!empty(zombiesWithinRange){
-		Base_Person target<-ZombieKill closest_to location;
-		if !empty(target){
-			do goto target:target;
-			if self.location=target.location{
-				write'Die Zombie Die';
-				ask target{
+	
+	//Small timer to prevent soldier from firing every cycle. Reloading or aiming.
+	int reloadingCounter <- 0 update: reloadingCounter-1 min:0;
+	
+	//Is the gun ready to fire?
+	bool readyToFire <- true update: reloadingCounter = 0;
+	
+	//Zombies we can shoot	
+	list<Zombie> zombiesWithinRange -> {Zombie where(each.location distance_to location < range)};	
+
+	//Shoots at closest zombie in shooting range, if we are ready to fire.
+	reflex shootAtZombie when: (!empty(zombiesWithinRange) and readyToFire) {
+		isIdle <-false;
+		textBubble <- "Shooting";
+		write "Time to shoot";
+		if(flip(accuracy)){
+			write name+": Hit";
+			ask zombiesWithinRange closest_to location{
 				do die;
 			}
-			}else {
-				isIdle<-true;
-				write'Find the F****** Zombie';
-			}
-		}else{
-			isIdle<-true;
+		} else {
+			write name+": Missed";
 		}
-		
-	}*/
+		reloadingCounter <- 8;
 	}
 	
+	//Optional reflex, for what to do when zombie is near but gun is not loaded
+	reflex sayOhShit when: (!empty(zombiesWithinRange) and !readyToFire) {
+		//Could flee from zombie, or stand ground while reloading.
+		textBubble <-"Reloading";
+	}
+
+	//If you want Soldiers to hunt zomibes, change to zombiesInSight.
+	reflex becomeIdle when: empty(zombiesWithinRange){
+		if(!readyToFire){
+			textBubble <- "reloading";
+		} else {
+			textBubble <- "";
+		}
+		isIdle <-true;
+	}
+}
+
 
 
 //Stays a distance away from zombies based on "bravery"
