@@ -334,6 +334,8 @@ species Hippie parent:Guest {
 // Attacks zombies.
 // Shoots at people near the radio tower.
 species Soldier parent: Human{
+	//Technicians desired position of soldier
+	point escort<-nil;
 	//Range of firing gun
 	float range <- rnd(5.0,10.0);
 	//Percent chance of hitting target
@@ -364,20 +366,22 @@ species Soldier parent: Human{
 		reloadingCounter <- 8;
 	}
 	
-	//Optional reflex, for what to do when zombie is near but gun is not loaded
-	reflex fleeWhileReloading when: (!empty(zombiesInSight) and !readyToFire) {
+	//Optional reflex, for what to do when zombie is near but gun is not loaded, and when not guarding a technician
+	reflex fleeWhileReloading when: (!empty(zombiesInSight) and !readyToFire and escort = nil) {
 		//Could flee from zombie, or stand ground while reloading.
 		do fleeFromZombies;	
 	}
 
 	//If you want Soldiers to hunt zomibes, change to zombiesInSight.
-	reflex becomeIdle when: empty(zombiesInSight){
+	reflex becomeIdle when: empty(zombiesInSight) {
 		if(!readyToFire){
 			textBubble <- "reloading";
 		} else {
 			textBubble <- "";
 		}
-		isIdle <-true;
+		if(escort = nil){
+			isIdle <-true;	
+		}
 	}
 	
 	reflex kickOutPunks when: (targetFoodStall != nil){
@@ -392,29 +396,75 @@ species Soldier parent: Human{
 		}
 	}
 	
+	reflex EscortTechnician when:escort!=nil{
+		isIdle<-false;
+		if self.location!=escort{
+			do goto target:escort;
+		}
+	}
+	
 }
 
 //Stays a distance away from zombies based on "bravery"
 //Goal is to get to a radio tower, and repair it based on engineering_skill
 //Then get to bunker
-species Technician parent: Base_Person{
+species Technician parent: Human{
 	float bravery <- rnd(0.8,5.0); //How far away you stay from Zombies
 	float engineering_skill <- rnd(0.5,2.0); //How fast they repair the tower
 	float ProtectRange<-(5.0);
+	float soldierRange<-10.0;
+	RadioMast tower;
 	rgb myColor <- #yellow;
-	list<Soldier> nearbySoldiers -> {Soldier where(each.location distance_to location<sightRange)};
+	list nearbySoldiers -> {Soldier where(each.location distance_to location<sightRange)};
 	
-	reflex askSoldierToAccompany when: !empty(nearbySoldiers){
-		ask nearbySoldiers closest_to location{
-			write 'Dying :'+name; 
-			do die;
+	init {
+		tower <- one_of(RadioMast);
+	}
+	
+	//Happen every tick when there are soldiers nearby
+	reflex FixTheRadioMast{
+		if self.location=tower.location{
+			write name +": fixing tower";
+			ask RadioMast{
+				progress <- progress + myself.engineering_skill;
+			}
 		}
-		isIdle<- false;
+	}
+	/*//Move to bunker when everyone is in the bunker 
+	reflex GoToBunker when:AlsoMove{
+		do goto target:{200,200,0};
+	}*/
+	reflex FeedMyself when:hunger>=100{
+		hunger<-0;
+	}
+	reflex askSoldierToAccompany when: !empty(nearbySoldiers){
+		float arc <- 0.0;
+		list SoldierNear<-[];
+		loop soldier over: nearbySoldiers{
+			arc<-30.0*length(SoldierNear);
+			SoldierNear<-SoldierNear+soldier;
+			float a<-sin(arc)*5;
+			float b<-cos(arc)*5;
+			float new_x<-location.x+b;
+			float new_y<-location.y+a;
+			ask soldier{
+				write name+' protecting '+myself.name;
+				hunger <- 0;
+				escort<-{new_x, new_y,0};
+			}
+		}
+		isIdle<-false;
 	}
 	
 	reflex becomeIdle when: empty(nearbySoldiers){
 		isIdle <- true;
 	}
+	
+	reflex GotoTower when:!empty(nearbySoldiers) and safetyBunker = nil{
+		do goto target:tower.location;
+	}
+	
+	
 }
 
 //A place where people can get food.
@@ -508,7 +558,10 @@ species RadioMast skills:[fipa]{
 		do start_conversation to: list(agents where(each is Human)) protocol: 'no-protocol' performative: 'inform' contents: [safeSpace];
 		broadCastSent <- true;
 	}
-	
+	aspect default{
+		draw cylinder(3.5,15) at:{100,100} color:#cyan;
+		draw cylinder(5,5) at:{100,100,15} color:#cyan;
+	}
 }
 
 experiment main type: gui{
@@ -521,16 +574,16 @@ experiment main type: gui{
 			species Technician aspect:default;
 			species FoodStall aspect: default;
 			species Bunker aspect:default;
-			species RadioMast;
+			species RadioMast aspect:default;
 			species Punk aspect:default;
 			species Hippie aspect:default;
 		}
-//		display Population_Information {
-//			chart "Population" type: series size: {1,0.5} position: {0, 0} {
-//  				 data "Zombies" value: zombies color: #black ;
-//				 data "Humans" value: humans color: #green ;
-//   		}
-//		}
+		display Population_Information {
+			chart "Population" type: series size: {1,0.5} position: {0, 0} {
+  				 data "Zombies" value: zombies color: #black ;
+				 data "Humans" value: humans color: #green ;
+   			}
+		}
 	}
 }
 
