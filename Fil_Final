@@ -15,7 +15,7 @@ global{
 	int zombies -> {length(Zombie)};
     int humans -> {length(agents where(each is Human))};
 	init{
-		int scenario <- 3 ;
+		int scenario <- 8 ;
 		if scenario = 0{
 			create FoodStall number:3;
 			create Zombie number: 5;
@@ -71,6 +71,16 @@ global{
 			create Hippie with: (location:{50,50,0}, hunger: 400, knownFoodPlaces:[FoodStall at 0]);
 			create Soldier with: (location:{50,50,0}, hunger: 400, knownFoodPlaces:[FoodStall at 0]);
 			create Punk with: (location:{100,100,0}, hunger:400, knownFoodPlaces:[FoodStall at 1]);
+		} else if scenario = 8{
+			create FoodStall number:3;
+			create Zombie number: 30;
+			create Punk number: 15;
+			create Hippie number: 15;
+			create Soldier number: 5;
+			create Bunker number:1;
+			create RadioMast number:1;
+			create Technician number:1;
+
 		}
 	}
 }
@@ -576,6 +586,7 @@ experiment main type: gui{
 				 data "Humans" value: humans color: #green ;
    			}
 		}
+		
 		display map type: opengl{
 			species Zombie aspect: default;
 			species Soldier aspect: default;
