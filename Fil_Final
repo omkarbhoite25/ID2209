@@ -15,7 +15,7 @@ global{
 	int zombies -> {length(Zombie)};
     int humans -> {length(agents where(each is Human))};
 	init{
-		int scenario <- 4 ;
+		int scenario <- 7 ;
 		if scenario = 0{
 			create FoodStall number:3;
 			create Zombie number: 5;
@@ -47,6 +47,27 @@ global{
 			create Zombie number: 1 with: (location:{90,90,0});
 			//Human should be fed
 			create Guest number: 1 with: (location:{110,110,0}, hunger:498, safetyBunker:one_of(Bunker));
+		} else if scenario = 5 {
+			create FoodStall with: (location:{50,50,0}, rowdiness : 100);
+			create FoodStall with: (location:{100,100,0}, chillness:100);
+			create Punk with: (location:{50,50,0}, hunger: 400, knownFoodPlaces:[FoodStall at 0]);
+			create Punk with: (location:{100,100,0}, hunger:400, knownFoodPlaces:[FoodStall at 1]);
+			
+		}else if scenario = 6 {
+			//Soldier kicks out punk at foodstall 0 for being too rowdy.
+			create FoodStall with: (location:{50,50,0});
+			create FoodStall with: (location:{100,100,0});
+			create Punk with: (location:{50,50,0}, hunger: 400, knownFoodPlaces:[FoodStall at 0]);
+			create Soldier with: (location:{50,50,0}, hunger: 400, knownFoodPlaces:[FoodStall at 0]);
+			create Punk with: (location:{100,100,0}, hunger:400, knownFoodPlaces:[FoodStall at 1]);
+		}else if scenario = 7{
+			//Hippie at Foodstall increases chill, so Soldier does not kick him out.
+			create FoodStall with: (location:{50,50,0});
+			create FoodStall with: (location:{100,100,0});
+			create Punk with: (location:{50,50,0}, hunger: 400, knownFoodPlaces:[FoodStall at 0]);
+			create Hippie with: (location:{50,50,0}, hunger: 400, knownFoodPlaces:[FoodStall at 0]);
+			create Soldier with: (location:{50,50,0}, hunger: 400, knownFoodPlaces:[FoodStall at 0]);
+			create Punk with: (location:{100,100,0}, hunger:400, knownFoodPlaces:[FoodStall at 1]);
 		}
 	}
 }
@@ -64,7 +85,7 @@ species Base_Person skills:[moving]{
 	aspect default{
 		draw sphere(1) at: {location.x,location.y,location.z+2} color:myColor;
 		draw pyramid(2) at: location color:myColor;		
-		draw string(textBubble) at:location+{-3,0,4};
+		draw textBubble at:location+{-3,0,4};
 	}
 	
 	reflex beIdle when: isIdle{
@@ -77,11 +98,12 @@ species Human parent: Base_Person skills:[fipa]{
 	Bunker safetyBunker <- nil;
 	list<string> funnyDeaths <- ["Blergh", "Oh no!", "Argh!", "Cruel world!", "Damn!", "I died!"];
 	
+	//Just a fun function that prints human's deaths out.
 	action descriptiveDeath{
 		write name+":"+one_of(funnyDeaths)+"X(";
 		do die;
 	}
-	list zombiesInSight -> { list<Zombie>(Zombie at_distance(sightRange))};
+	list zombiesInSight -> { Zombie at_distance(sightRange)};
 	
 	list<FoodStall> stallsWithinSight -> {FoodStall where(each.location distance_to location < sightRange)};
 	FoodStall targetFoodStall <- nil;
@@ -91,14 +113,16 @@ species Human parent: Base_Person skills:[fipa]{
 	
 	//Everyone begins knowing about a random food stall.
 	list<FoodStall> knownFoodPlaces <- [one_of(FoodStall)];
+	//Places this human does not like to go to
+	list<FoodStall> badFoodStalls <-[];
 	
 	//When a guest becomes hungry, they pick a place to eat food.
 	reflex pickFoodStall when: (isHungry and targetFoodStall = nil){
-		targetFoodStall <- knownFoodPlaces closest_to location;
+		targetFoodStall <- (knownFoodPlaces where !(badFoodStalls contains(each))) closest_to location;
 	}
 	
-	//When a human is hungry, and safe from zombies, they head towards a food place	
-	reflex moveTowardsFood when: (empty(zombiesInSight) and isHungry and safetyBunker  = nil){
+	//When a human has picked a place to go eat, and is safe from zombies, they head towards a food place	
+	reflex moveTowardsFood when: (empty(zombiesInSight) and targetFoodStall != nil and safetyBunker  = nil){
 		textBubble <- "Hungry";
 		isIdle <-false;
 		do goto (targetFoodStall.location);
@@ -146,6 +170,7 @@ species Human parent: Base_Person skills:[fipa]{
 	int starvationLevel <- 500;
 	int hunger <- rnd(0,100) update: hunger + rnd(0,1) max: starvationLevel min:0;
 	action fleeFromZombies{
+		//Do not need to flee from zombies inside the bunker
 		if(agents_inside(safetyBunker) contains (self)){
 			return;
 		}
@@ -247,7 +272,6 @@ species Zombie parent: Base_Person {
 //needs to eat (not people)
 species Guest parent: Human {
 	rgb myColor <- #green;
-	
 	//Flee from zombies, by running in opposite direction..
 	reflex avoidZombies when: !empty(zombiesInSight){
 		do fleeFromZombies;		
@@ -259,7 +283,52 @@ species Guest parent: Human {
 		isIdle<-true;
 	}
 	
+	float threshold <- rnd(5.0,20.0);
+	int timeToForget <- 0 update:timeToForget -1 min:0;
+	
+	//Forget about a bad place after some time	
+	reflex forgetAboutBadFoodStalls when: timeToForget =1 {
+		write name+ " forgot about bad place...";
+		if(!empty(badFoodStalls)){
+			badFoodStalls <- badFoodStalls - one_of(badFoodStalls);
+		}		
+	}
 }
+
+species Punk parent:Guest {
+	rgb myColor <- #hotpink;
+	float aggression <- rnd(0.3,0.7);
+	
+	//Punks don't like beingin places that are too chill.
+	bool dontLikeStall {
+		if(targetFoodStall = nil) {
+			return false;
+		} else if (agents_inside(targetFoodStall) contains (self) and targetFoodStall.chillness >= threshold){
+			return true;
+		}
+		return false;
+	}
+		
+	action leaveFoodStall{
+		badFoodStalls <- badFoodStalls + targetFoodStall;
+		timeToForget <- 50;
+		targetFoodStall <- nil;
+		textBubble <- "Annoyed";
+		isIdle <- true;
+	}
+	
+	reflex leaveDueToChill when: dontLikeStall() {
+		write name + " hate this place " + targetFoodStall.name + ": " + targetFoodStall.chillness;
+		do leaveFoodStall;
+	}
+}
+
+
+species Hippie parent:Guest {
+	rgb myColor <- #sienna;
+	float cool <- rnd(0.7,0.9);
+}
+
 
 // Follows technicians.
 // Attacks zombies.
@@ -310,6 +379,19 @@ species Soldier parent: Human{
 		}
 		isIdle <-true;
 	}
+	
+	reflex kickOutPunks when: (targetFoodStall != nil){
+		 if (agents_inside(targetFoodStall) contains (self) and targetFoodStall.chillness < targetFoodStall.rowdiness/2){
+			Punk punk <- Punk(one_of(agents_inside(targetFoodStall) where(each is Punk)));
+			write name+" : Right, that's enough racket! C="+targetFoodStall.chillness +", "+targetFoodStall.rowdiness;
+			ask punk{
+				write name+": Bloody copper! I was only having a laugh...";
+				self.location <- location +2;
+				do leaveFoodStall;
+			}
+		}
+	}
+	
 }
 
 //Stays a distance away from zombies based on "bravery"
@@ -337,11 +419,31 @@ species Technician parent: Base_Person{
 
 //A place where people can get food.
 species FoodStall {
-	int foodStorage <- 10000 min:0;
-	float rowdiness <- 0.0;
+	//How rowdy the stall is
+	float rowdiness <- 0.0 min:0.0;
+	
+	//How chill the stall is
+	float chillness <- 0.0 min:0.0;
+	init {
+		shape <- square(5);
+	}
+	
+	reflex calculateValues {
+		rowdiness <-0.0;
+		chillness <-0.0;
+		loop human over: agents_inside(self){
+			if (human is Punk){
+				rowdiness <- rowdiness + Punk(human).aggression;
+				chillness <- chillness - Punk(human).aggression;
+			} else if (human is Hippie){
+				chillness <- chillness + Hippie(human).cool;
+			}
+		}
+	}
 	
 	aspect default {
-		draw square(5) at: location color: #green;
+		draw shape at: location color: #green;
+		draw name at: location color:#black;
 	}
 }
 
@@ -372,12 +474,14 @@ species Bunker skills:[fipa]{
 		}
 	}
 	
+	//Appear on the map, start killing zombies and feeding people inside yourself.
 	reflex activate when:(!empty(informs)){
 		string trash <- (informs at 0).contents;//Trash message
 		isActive <- true;
 	}
 	
 	aspect default {
+		//Only show when activated by RadioMast
 		if(isActive){
 			draw shape at: location color: #gold;	
 		}
@@ -418,6 +522,8 @@ experiment main type: gui{
 			species FoodStall aspect: default;
 			species Bunker aspect:default;
 			species RadioMast;
+			species Punk aspect:default;
+			species Hippie aspect:default;
 		}
 //		display Population_Information {
 //			chart "Population" type: series size: {1,0.5} position: {0, 0} {
