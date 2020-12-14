@@ -34,11 +34,11 @@ global{
 			create Technician with: (location:{50,55,0});
 			create Zombie with: (location:{50,35,0});
 		} else if scenario = 3{
-			create FoodStall number:3;
-			create Zombie number: 5;
-			create Punk number: 20;
-			create Hippie number:20;
-			create Soldier number: 5;
+			create FoodStall number:6;
+			create Zombie number: 15;
+			create Punk number: 30;
+			create Hippie number: 30;
+			create Soldier number: 10;
 			create Bunker number:1;
 			create RadioMast number:1;
 			create Technician number:1;
@@ -139,8 +139,7 @@ species Human parent: Base_Person skills:[fipa]{
 	
 	//Wander around in bunker.
 	reflex wanderInBunker when:(safetyBunker != nil and agents_inside(safetyBunker) contains(self)) {
-		textBubble <-"Safe";
-		do wander bounds:safetyBunker.shape amplitude:90.0;
+		do wander bounds:safetyBunker.shape amplitude:90.0 speed:0.4;
 	}
 	
 	//While at food stall, eat food until no longer hungry
@@ -399,7 +398,7 @@ species Soldier parent: Human{
 		}
 	}
 	
-	reflex EscortTechnician when:escort!=nil{
+	reflex EscortTechnician when:escort!=nil and safetyBunker = nil{
 		isIdle<-false;
 		if self.location!=escort{
 			do goto target:escort;
@@ -412,10 +411,9 @@ species Soldier parent: Human{
 //Goal is to get to a radio tower, and repair it based on engineering_skill
 //Then get to bunker
 species Technician parent: Human{
-	float bravery <- rnd(0.8,5.0); //How far away you stay from Zombies
 	float engineering_skill <- rnd(0.5,2.0); //How fast they repair the tower
-	float ProtectRange<-(5.0);
-	float soldierRange<-10.0;
+	float ProtectRange<-rnd(4.0, 5.0);
+	
 	RadioMast tower;
 	rgb myColor <- #yellow;
 	list nearbySoldiers -> {Soldier where(each.location distance_to location<sightRange)};
@@ -431,14 +429,13 @@ species Technician parent: Human{
 			progress <- progress + myself.engineering_skill;
 		}
 	}
-	/*//Move to bunker when everyone is in the bunker 
-	reflex GoToBunker when:AlsoMove{
-		do goto target:{200,200,0};
-	}*/
+
+	//Technicians have enough food to feed themselves....
 	reflex FeedMyself when:hunger>=100{
 		hunger<-0;
 	}
-	reflex askSoldierToAccompany when: !empty(nearbySoldiers){
+	
+	reflex askSoldierToAccompany when: !empty(nearbySoldiers) and safetyBunker = nil{
 		float arc <- 0.0;
 		list SoldierNear<-[];
 		loop soldier over: nearbySoldiers{
