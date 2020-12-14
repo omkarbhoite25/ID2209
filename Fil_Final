@@ -15,7 +15,7 @@ global{
 	int zombies -> {length(Zombie)};
     int humans -> {length(agents where(each is Human))};
 	init{
-		int scenario <- 7 ;
+		int scenario <- 3 ;
 		if scenario = 0{
 			create FoodStall number:3;
 			create Zombie number: 5;
@@ -36,10 +36,13 @@ global{
 		} else if scenario = 3{
 			create FoodStall number:3;
 			create Zombie number: 5;
-			create Guest number: 40;
-			create Soldier number: 1;
+			create Punk number: 20;
+			create Hippie number:20;
+			create Soldier number: 5;
 			create Bunker number:1;
 			create RadioMast number:1;
+			create Technician number:1;
+
 		} else if scenario = 4{
 			//Test having people inside the bunker
 			create Bunker with: (location:{100,100,0}, isActive:true);
@@ -325,7 +328,7 @@ species Punk parent:Guest {
 
 
 species Hippie parent:Guest {
-	rgb myColor <- #sienna;
+	rgb myColor <- #purple;
 	float cool <- rnd(0.7,0.9);
 }
 
@@ -385,7 +388,7 @@ species Soldier parent: Human{
 	}
 	
 	reflex kickOutPunks when: (targetFoodStall != nil){
-		 if (agents_inside(targetFoodStall) contains (self) and targetFoodStall.chillness < targetFoodStall.rowdiness/2){
+		 if (agents_inside(targetFoodStall) contains (self) and targetFoodStall.chillness < targetFoodStall.rowdiness/2 and targetFoodStall.chillness != 0){
 			Punk punk <- Punk(one_of(agents_inside(targetFoodStall) where(each is Punk)));
 			write name+" : Right, that's enough racket! C="+targetFoodStall.chillness +", "+targetFoodStall.rowdiness;
 			ask punk{
@@ -422,12 +425,10 @@ species Technician parent: Human{
 	}
 	
 	//Happen every tick when there are soldiers nearby
-	reflex FixTheRadioMast{
-		if self.location=tower.location{
-			write name +": fixing tower";
-			ask RadioMast{
-				progress <- progress + myself.engineering_skill;
-			}
+	reflex FixTheRadioMast when:(!empty(nearbySoldiers) and self.location=tower.location){
+		write name +": fixing tower";
+		ask RadioMast{
+			progress <- progress + myself.engineering_skill;
 		}
 	}
 	/*//Move to bunker when everyone is in the bunker 
@@ -448,7 +449,6 @@ species Technician parent: Human{
 			float new_x<-location.x+b;
 			float new_y<-location.y+a;
 			ask soldier{
-				write name+' protecting '+myself.name;
 				hunger <- 0;
 				escort<-{new_x, new_y,0};
 			}
@@ -456,10 +456,17 @@ species Technician parent: Human{
 		isIdle<-false;
 	}
 	
-	reflex becomeIdle when: empty(nearbySoldiers){
+	//Flee from zombies, by running in opposite direction, when there aren't soldiers to protect you..
+	reflex avoidZombies when: empty(nearbySoldiers) and !empty(zombiesInSight){
+		do fleeFromZombies;		
+	}
+	
+	//Whilst not protected by soldiers, or hunted by zombies, wander around looking for Soldiers
+	reflex becomeIdle when: empty(zombiesInSight) and empty(nearbySoldiers) and safetyBunker = nil{
 		isIdle <- true;
 	}
 	
+	//Head towards the radioMast when you have soldiers to protect you.
 	reflex GotoTower when:!empty(nearbySoldiers) and safetyBunker = nil{
 		do goto target:tower.location;
 	}
@@ -542,7 +549,7 @@ species Bunker skills:[fipa]{
 //Technicians know the location of the RadioMast 
 species RadioMast skills:[fipa]{
 	//Progress to broadcast
-	float progress <- 0.0 max:100.0 update:progress+1;
+	float progress <- 0.0 max:100.0;
 	//Only 1 broadcast will be sent out.
 	bool broadCastSent <- false;
 	Bunker safeSpace;
@@ -566,7 +573,12 @@ species RadioMast skills:[fipa]{
 
 experiment main type: gui{
 	output{
-
+		display Population_Information {
+			chart "Population" type: series size: {1,0.5} position: {0, 0} {
+  				 data "Zombies" value: zombies color: #black ;
+				 data "Humans" value: humans color: #green ;
+   			}
+		}
 		display map type: opengl{
 			species Zombie aspect: default;
 			species Soldier aspect: default;
@@ -578,12 +590,7 @@ experiment main type: gui{
 			species Punk aspect:default;
 			species Hippie aspect:default;
 		}
-		display Population_Information {
-			chart "Population" type: series size: {1,0.5} position: {0, 0} {
-  				 data "Zombies" value: zombies color: #black ;
-				 data "Humans" value: humans color: #green ;
-   			}
-		}
+
 	}
 }
 
