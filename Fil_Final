@@ -566,8 +566,8 @@ species RadioMast skills:[fipa]{
 		broadCastSent <- true;
 	}
 	aspect default{
-		draw cylinder(3.5,15) at:{100,100} color:#cyan;
-		draw cylinder(5,5) at:{100,100,15} color:#cyan;
+		draw cylinder(3.5,15) at:location color:#cyan;
+		draw cylinder(5,5) at:location + {0,0,15} color:#cyan;
 	}
 }
 
