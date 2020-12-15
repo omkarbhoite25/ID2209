@@ -12,8 +12,13 @@
 model FinalAssignment
 global{
 	geometry shape <- square(200#m);
+	//Keeps track of population numbers, for chart purposes
 	int zombies -> {length(Zombie)};
     int humans -> {length(agents where(each is Human))};
+    int soldiers -> {length(agents where(each is Soldier))};
+    int techs -> {length(agents where(each is Technician))};
+    int punks -> {length(agents where(each is Punk))};
+    int hippies -> {length(agents where(each is Hippie))};
 	init{
 		int scenario <- 8 ;
 		if scenario = 0{
@@ -91,7 +96,7 @@ species Base_Person skills:[moving]{
 		speed <- 1.0;	
 	}
 	rgb myColor <- #aqua;
-	float sightRange <- 20.0;
+	float sightRange <- rnd(18.0,20.0);
 	bool isIdle <- true;
 	string textBubble <-"";
 	
@@ -109,6 +114,10 @@ species Base_Person skills:[moving]{
 //Used to categorize all humans, as opposed to zombies.
 species Human parent: Base_Person skills:[fipa]{
 	Bunker safetyBunker <- nil;
+	
+	init {
+		speed <- rnd(0.9,1.0);	
+	}
 	list<string> funnyDeaths <- ["Blergh", "Oh no!", "Argh!", "Cruel world!", "Damn!", "I died!"];
 	
 	//Just a fun function that prints human's deaths out.
@@ -116,6 +125,7 @@ species Human parent: Base_Person skills:[fipa]{
 		write name+":"+one_of(funnyDeaths)+"X(";
 		do die;
 	}
+	//Zombies that we can see
 	list zombiesInSight -> { Zombie at_distance(sightRange)};
 	
 	list<FoodStall> stallsWithinSight -> {FoodStall where(each.location distance_to location < sightRange)};
@@ -241,8 +251,8 @@ species Zombie parent: Base_Person {
 	//List of nearby Humans
 	list<Human>  humansInSight -> {list<Human>(agents_at_distance(sightRange) where(each is Human))};
 	
-	//Humans that we can eat
-	list<Human>  eatableHumans -> {list<Human>(agents_at_distance(killRange) where(each is Human))};
+	//Humans that we can eat (Are in killRange, that are not in a bunker
+	list<Human>  edibleHumans -> {list<Human>(agents_at_distance(killRange) where(each is Human and( Human(each).safetyBunker= nil or (agents_inside(Human(each).safetyBunker) contains(each)))))};
 	
 	//Hunt nearest person in sight
 	reflex huntPeople when: !empty(humansInSight) and eatingCounter = 0{
@@ -253,8 +263,8 @@ species Zombie parent: Base_Person {
 	}
 	
 	//Kill and eat a person, and delay for a few cycles while eating them
-	reflex killPerson when: !empty(eatableHumans) {
-		Human target <- eatableHumans closest_to location;
+	reflex killPerson when: !empty(edibleHumans) {
+		Human target <- edibleHumans closest_to location;
 		isIdle <-false; 
 		eatingCounter <-50;//Time to eat and then make new zombie
 		ask target{
@@ -308,7 +318,7 @@ species Guest parent: Human {
 }
 
 species Punk parent:Guest {
-	rgb myColor <- #hotpink;
+	rgb myColor <- #red;
 	float aggression <- rnd(0.3,0.7);
 	
 	//Punks don't like beingin places that are too chill.
@@ -584,6 +594,10 @@ experiment main type: gui{
 			chart "Population" type: series size: {1,0.5} position: {0, 0} {
   				 data "Zombies" value: zombies color: #black ;
 				 data "Humans" value: humans color: #green ;
+				 data "Soldiers" value: soldiers color: #blue ;//soldiers
+				 data "Punks" value: punks color: #red ;//punks
+				 data "Hippies" value: hippies color: #purple ;//hippies
+				 data "Technicians" value: techs color: #orange ;//technicians
    			}
 		}
 		
